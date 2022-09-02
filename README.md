@@ -1,19 +1,25 @@
-# tint.nvim
+# :eyeglasses: tint.nvim
 
 Dim inactive windows in Neovim using window-local highlight namespaces.
 
-## Important
+## :construction: Important
+
+This is still a work in progress, create an issue if you find any.
 
 This feature was added via [!13457](https://github.com/neovim/neovim/pull/13457). Your version of Neovim must
 include this change in order for this to work.
 
-## About
+## :clapper: Demo
+
+![tint](https://user-images.githubusercontent.com/31262046/188242698-3588074d-176b-4926-834f-ab9cf6302cd2.gif)
+
+## :grey_question: About
 
 Using [window-local highlight namespaces](https://github.com/neovim/neovim/pull/13457), this plugin will iterate
 over your current colorscheme and either brighten or dim your current colorscheme (based on what you configure)
 for inactive windows.
 
-## Setup
+## :electric_plug: Setup
 
 See a description of all options in [Options](#options).
 
@@ -41,7 +47,7 @@ require("tint").setup({
 })
 ```
 
-## Options
+## :gear: Options
 
 | Option | Default | Description                                                                                |
 |--------|---------|--------------------------------------------------------------------------------------------|
