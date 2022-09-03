@@ -55,3 +55,9 @@ require("tint").setup({
 | `amt`    | `-40`     | Amount to change current colorscheme. Negative values tint, positive values brighten.       |
 | `ignore` | `{}`      | A list of patterns (supplied to `string.find`) for highlight groups to ignore tinting for. |
 | `ignorefunc` | `nil` | A function that will be called for each window to discern whether or not it should be tinted. Arguments are are `(winid)`, return `false` or `nil` to tint a window, anything else to not tint it. |
+
+## :heart: Acknowledgements
+
+- The harder part of the plugin to dim colors from [StackOverflow](https://stackoverflow.com/questions/72424838/programmatically-lighten-or-darken-a-hex-color-in-lua-nvim-highlight-colors)
+- The general idea from [Shade.nvim](https://github.com/sunjon/Shade.nvim)
+- `bfredl` for making everyones life easier
