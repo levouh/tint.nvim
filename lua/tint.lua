@@ -179,7 +179,7 @@ tint.setup = function(user_config)
   end
 
   user_config = user_config or {}
-  vim.tbl_extend("force", tint.config, user_config)
+  tint.config = vim.tbl_extend("force", tint.config, user_config)
 
   __.setup_module = true
   __.setup_all()
