@@ -134,6 +134,19 @@ local function setup_autocmds()
   __.setup_autocmds = true
 end
 
+local function verify_version()
+  if not vim.api.nvim_win_set_hl_ns then
+    vim.notify(
+      "tint.nvim requires a newer version of Neovim that provides 'nvim_win_set_hl_ns'",
+      vim.lsp.log_levels.ERROR
+    )
+
+    return false
+  end
+
+  return true
+end
+
 __.on_focus = function()
   vim.api.nvim_win_set_hl_ns(vim.api.nvim_get_current_win(), __.default_ns)
 end
@@ -157,12 +170,16 @@ __.setup_all = function()
 end
 
 tint.setup = function(user_config)
-  user_config = user_config or {}
-  vim.tbl_extend("force", tint.config, user_config)
+  if not verify_version() then
+    return
+  end
 
   if __.setup_module then
     return
   end
+
+  user_config = user_config or {}
+  vim.tbl_extend("force", tint.config, user_config)
 
   __.setup_module = true
   __.setup_all()
