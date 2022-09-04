@@ -55,6 +55,7 @@ require("tint").setup({
 |--------|---------|--------------------------------------------------------------------------------------------|
 | `bg`     | `false`   | Whether or not to tint background portions of highlight groups.              |
 | `amt`    | `-40`     | Amount to change current colorscheme. Negative values darken, positive values brighten.       |
+| `saturation` | `0.7` | The amount of saturation to preserve, in the range of [0.0, 1.0]. |
 | `ignore` | `{}`      | A list of patterns (supplied to `string.find`) for highlight group names to ignore tinting for. |
 | `ignorefunc` | `nil` | A function that will be called for each window to discern whether or not it should be tinted. Arguments are are `(winid)`, return `false` or `nil` to tint a window, anything else to not tint it. |
 
