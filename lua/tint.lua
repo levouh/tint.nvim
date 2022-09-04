@@ -1,6 +1,7 @@
 local tint = {
   config = {
     amt = -40,
+    saturation = 0.7,
     bg = false,
     ignore = {},
     ignorefunc = nil,
@@ -18,17 +19,26 @@ local function clamp(component)
   return math.min(math.max(component, 0), 255)
 end
 
-local function lighten_darken_color(col, amt)
+---@param col string The hex color to transform.
+---@param amt integer The amount to amplify each color component (can be both negative and positive).
+---@param saturation integer The amount of saturation to preserve, in the range of [0.0, 1.0].
+local function transform_color(col, amt, saturation)
   if string.find(col, "^#") then
     col = string.sub(col, 2)
   end
 
   local num = tonumber(col, 16)
-  local r = math.floor(num / 0x10000) + amt
-  local g = (math.floor(num / 0x100) % 0x100) + amt
-  local b = (num % 0x100) + amt
+  local r = math.floor(num / 0x10000)
+  local g = (math.floor(num / 0x100) % 0x100)
+  local b = (num % 0x100)
+  if saturation ~= 1 then
+    local rec601_luma = 0.299 * r + 0.587 * g + 0.114 * b
+    r = math.floor(r * saturation + rec601_luma * (1 - saturation))
+    g = math.floor(g * saturation + rec601_luma * (1 - saturation))
+    b = math.floor(b * saturation + rec601_luma * (1 - saturation))
+  end
 
-  return string.format("#%06x", clamp(r) * 0x10000 + clamp(g) * 0x100 + clamp(b))
+  return string.format("#%06x", clamp(r + amt) * 0x10000 + clamp(g + amt) * 0x100 + clamp(b + amt))
 end
 
 local function get_def(v)
@@ -77,11 +87,11 @@ end
 
 local function set_tint_ns(k, def)
   if def.fg and not ignored(k) then
-    def.fg = lighten_darken_color(get_hex(def.fg), tint.config.amt)
+    def.fg = transform_color(get_hex(def.fg), tint.config.amt, tint.config.saturation)
   end
 
   if tint.config.bg and def.bg and not ignored(k) then
-    def.bg = lighten_darken_color(get_hex(def.bg), tint.config.amt)
+    def.bg = transform_color(get_hex(def.bg), tint.config.amt, tint.config.saturation)
   end
 
   vim.api.nvim_set_hl(__.tint_ns, k, def)
