@@ -23,7 +23,7 @@ The plugin is responsive to changes in colorscheme via `:h ColorScheme`.
 
 ## :electric_plug: Setup
 
-See a description of all options in [Options](#options).
+See [docs](DOC.md) for more details.
 
 ```lua
 -- Default configuration
@@ -31,10 +31,11 @@ require("tint").setup()
 
 -- Override defaults
 require("tint").setup({
-  bg = true,  -- Tint background portions of highlight groups
-  amt = -40,  -- Darken colors, use a positive value to brighten
-  ignore = { "WinSeparator", "Status.*" },  -- Highlight group patterns to ignore, see `string.find`
-  ignorefunc = function(winid)
+  tint = -45,  -- Darken colors, use a positive value to brighten
+  saturation = 0.6,  -- Saturation to preserve
+  tint_background_colors = true,  -- Tint background portions of highlight groups
+  highlight_ignore_patterns = { "WinSeparator", "Status.*" },  -- Highlight group patterns to ignore, see `string.find`
+  window_ignore_function = function(winid)
     local buf = vim.api.nvim_win_get_buf(winid)
     local buftype vim.api.nvim_buf_get_option(buf, "buftype")
 
@@ -51,13 +52,7 @@ require("tint").setup({
 
 ## :gear: Options
 
-| Option | Default | Description                                                                                |
-|--------|---------|--------------------------------------------------------------------------------------------|
-| `bg`     | `false`   | Whether or not to tint background portions of highlight groups.              |
-| `amt`    | `-40`     | Amount to change current colorscheme. Negative values darken, positive values brighten.       |
-| `saturation` | `0.7` | The amount of saturation to preserve, in the range of [0.0, 1.0]. |
-| `ignore` | `{}`      | A list of patterns (supplied to `string.find`) for highlight group names to ignore tinting for. |
-| `ignorefunc` | `nil` | A function that will be called for each window to discern whether or not it should be tinted. Arguments are are `(winid)`, return `false` or `nil` to tint a window, anything else to not tint it. |
+See [docs](DOC.md), or read `:h tint`.
 
 ## :heart: Acknowledgements
 
