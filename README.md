@@ -19,8 +19,6 @@ Using [window-local highlight namespaces](https://github.com/neovim/neovim/pull/
 over each highlight group in the active colorscheme when the plugin is setup and either brighten or darken each
 value (based on what you configure) for inactive windows.
 
-The plugin is responsive to changes in colorscheme via `:h ColorScheme`.
-
 ## :gear: Setup
 
 See [docs](DOC.md) or `:h tint` for more details.
@@ -28,7 +26,11 @@ See [docs](DOC.md) or `:h tint` for more details.
 ```lua
 -- Default configuration
 require("tint").setup()
+```
 
+Or if you want to override the defaults:
+
+```lua
 -- Override some defaults
 require("tint").setup({
   tint = -45,  -- Darken colors, use a positive value to brighten
@@ -49,13 +51,15 @@ require("tint").setup({
 
 ### Custom color transformations
 
+See `:h tint-transforms_api` for more details.
+
 If you come up with a cool set of transformations that you think might be useful to others, see the [contributing guide](CONTRIBUTING.md) on how you can make this available for others.
 
 ```lua
 -- Handle transformations of highlight groups for the tinted namespace yourself
 require("tint").setup({
   transforms = {
-    require("tint.colors").saturate(0.5),
+    require("tint.transforms").saturate(0.5),
     function(r, g, b, hl_group_info)
       print("Higlight group name: " .. hl_group_info.hl_group_name)
 
@@ -64,6 +68,24 @@ require("tint").setup({
 
       return r + 1, g + 1, b + 1
     end
+  }
+})
+```
+
+### Bounding colors to some threshold
+
+See `:h tint-transforms-tint_with_threshold` for more details.
+
+Your colorscheme might have colors that are slightly different from your default editor background, and those that are much further away. You want the colors that are further away tinted
+more, and those that are closer tinted less. In order to achieve this, you can set some arbitrary "tint bounding color" and keep all tinted colors some threshold away from it.
+
+Setting this to the `background` portion of your `Normal` highlight group is usually the easiest way to go.
+
+```lua
+require("tint").setup({
+  transforms = {
+    require("tint.transforms").tint_with_threshold(-100, "#1C1C1C", 150),  -- Try to tint by `-100`, but keep all colors at least `150` away from `#1C1C1C`
+    require("tint.transforms").saturate(0.5),
   }
 })
 ```
