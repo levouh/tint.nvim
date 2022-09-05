@@ -78,7 +78,10 @@ end
 ---@param hl_def table The highlight definition, see `:h nvim_set_hl`
 local function set_tint_ns(hl_group_name, hl_def)
   if hl_def.fg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.fg = colors.transform_color(colors.get_hex(hl_def.fg), tint.config.tint, tint.config.saturation)
+    hl_def.fg = colors.transform_color(colors.get_hex(hl_def.fg), {
+      colors.tint(tint.config.tint),
+      colors.saturate(tint.config.saturation),
+    })
   end
 
   if tint.config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then

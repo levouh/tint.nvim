@@ -16,24 +16,45 @@ colors.clamp = function(component)
   return math.min(math.max(component, 0), 255)
 end
 
+--- Generate function to saturate a color by the specified amount
+---
+---@param amt number The amount to saturate the color by
+colors.saturate = function(amt)
+  return function(r, g, b)
+    if amt ~= 1 then
+      local rec601_luma = 0.299 * r + 0.587 * g + 0.114 * b
+
+      r = math.floor(r * amt + rec601_luma * (1 - amt))
+      g = math.floor(g * amt + rec601_luma * (1 - amt))
+      b = math.floor(b * amt + rec601_luma * (1 - amt))
+    end
+
+    return r, g, b
+  end
+end
+
+--- Generate function to lighten or darken a color by the specified amount
+---
+---@param amt number The amount to lighten or darken the color by
+colors.tint = function(amt)
+  return function(r, g, b)
+    return r + amt, g + amt, b + amt
+  end
+end
+
 --- Transform a color given a change in tint and saturation
 ---
 ---@param hex string The hex color to transform.
----@param tint number The amount to amplify each color component (can be both negative and positive).
----@param saturation number The amount of saturation to preserve, in the range of [0.0, 1.0].
+---@param transforms table A table of functions used to transform the input hex color
 ---@return string The hex representation color transformed by the configured values
-colors.transform_color = function(hex, tint, saturation)
+colors.transform_color = function(hex, transforms)
   local r, g, b = colors.hex_to_rgb(hex)
 
-  if saturation ~= 1 then
-    local rec601_luma = 0.299 * r + 0.587 * g + 0.114 * b
-
-    r = math.floor(r * saturation + rec601_luma * (1 - saturation))
-    g = math.floor(g * saturation + rec601_luma * (1 - saturation))
-    b = math.floor(b * saturation + rec601_luma * (1 - saturation))
+  for _, transform in ipairs(transforms) do
+    r, g, b = transform(r, g, b)
   end
 
-  return colors.rgb_to_hex(r + tint, g + tint, b + tint)
+  return colors.rgb_to_hex(r, g, b)
 end
 
 --- Transform RGB values to hex
