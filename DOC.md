@@ -1,3 +1,5 @@
+# Content
+
 1. [Setup](#setup)
 2. [Options](#options)
 
@@ -69,15 +71,15 @@ The amount of saturation to preserve, in the range of `[0.0, 1.0]`.
 
 A predefined set of transforms as a `string`, can be one of:
 
-`require("tint").transforms.SATURATE_TINT`: Saturate and tint using `saturation` and `tint` config values
+- `require("tint").transforms.SATURATE_TINT`: Saturate and tint using `saturation` and `tint` config values
 
 Or table of functions that each accept the following arguments:
 
-`r`: `number` The red component of the highlight group in question
-`g`: `number` The green component of the highlight group in question
-`b`: `number` The blue component of the highlight group in question
-`hl_group_info`: `table` Information about the highlight group being tinted, including:
-  `hl_group_name`: `string` The name of the highlight group being altered
+- `r`: `number` The red component of the highlight group in question
+- `g`: `number` The green component of the highlight group in question
+- `b`: `number` The blue component of the highlight group in question
+- `hl_group_info`: `table` Information about the highlight group being tinted, including:
+  - `hl_group_name`: `string` The name of the highlight group being altered
 
 and each return the `r`, `g` and `b` values modified as needed.
 

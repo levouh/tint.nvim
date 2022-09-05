@@ -8,8 +8,8 @@
 
 `tint.lua` defines `__.transforms`, which follows:
 
-`key`: Name of the transform to use, comes from `tint.transforms`
-`value`: `function` that should return a table of `transforms`. See `:h tint-transforms` for more details on the function implementation.
+- `key`: Name of the transform to use, comes from `tint.transforms`
+- `value`: `function` that should return a table of `transforms`. See `:h tint-transforms` for more details on the function implementation.
 
 In order to create a new transform for others to use:
 

@@ -5,14 +5,18 @@ tint.txt                                                      *tint* *tint.nvim*
 ================================================================================
 CONTENTS                                                           *tint-contents*
 
-    1. Setup..........................................................|tint-setup|
-    2. Options......................................................|tint-options|
-        2.1. tint......................................................|tint-tint|
-        2.2. saturation..........................................|tint-saturation|
-        2.3. transforms..........................................|tint-transforms|
-        2.4. highlight_ignore_patterns............|tint-highlight_ignore_patterns|
-        2.5. window_ignore_function..................|tint-window_ignore_function|
-        2.6. tint_background_colors..................|tint-tint_background_colors|
+1. Content..........................................................|tint-content|
+    1.1. Setup........................................................|tint-setup|
+    1.2. Options....................................................|tint-options|
+        1.2.1. tint....................................................|tint-tint|
+        1.2.2. saturation........................................|tint-saturation|
+        1.2.3. transforms........................................|tint-transforms|
+        1.2.4. highlight_ignore_patterns..........|tint-highlight_ignore_patterns|
+        1.2.5. window_ignore_function................|tint-window_ignore_function|
+        1.2.6. tint_background_colors................|tint-tint_background_colors|
+
+================================================================================
+CONTENT                                                             *tint-content*
 
 1.  Setup (#setup)
 2.  Options (#options)
@@ -39,6 +43,11 @@ SETUP                                                                 *tint-setu
         return buftype == "terminal" or floating
       end
     })
+<
+
+Custom transformations can also be setup. Make sure to create a PR if you end up making one that you think others may enjoy as well.
+See `CONTRIBUTING.md` for more details on how to add transforms.
+>
     -- Handle transformations of highlight groups for the tinted namespace yourself
     require("tint").setup({
       transforms = {
@@ -79,15 +88,15 @@ default: `tint.transforms.SATURATE_TINT`
 
 A predefined set of transforms as a `string`, can be one of:
 
-`require("tint").transforms.SATURATE_TINT`: Saturate and tint using `saturation` and `tint` config values
+*   `require("tint").transforms.SATURATE_TINT`: Saturate and tint using `saturation` and `tint` config values
 
 Or table of functions that each accept the following arguments:
 
-`r`: `number` The red component of the highlight group in question
-`g`: `number` The green component of the highlight group in question
-`b`: `number` The blue component of the highlight group in question
-`hl_group_info`: `table` Information about the highlight group being tinted, including:
-  `hl_group_name`: `string` The name of the highlight group being altered
+*   `r`: `number` The red component of the highlight group in question
+*   `g`: `number` The green component of the highlight group in question
+*   `b`: `number` The blue component of the highlight group in question
+*   `hl_group_info`: `table` Information about the highlight group being tinted, including:
+    *   `hl_group_name`: `string` The name of the highlight group being altered
 
 and each return the `r`, `g` and `b` values modified as needed.
 
