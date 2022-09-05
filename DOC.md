@@ -2,6 +2,7 @@
 
 1. [Setup](#setup)
 2. [Options](#options)
+3. [API](#api)
 
 ## Setup
 
@@ -120,3 +121,24 @@ A function that will be called for each window to discern whether or not it shou
 
 Whether or not to tint background portions of highlight groups.
 
+## API
+
+### **enable**
+
+Function that can be called to enable the plugin after it has been previously disabled.
+
+For example:
+
+```lua
+require("tint").enable()
+```
+
+### **disable**
+
+Function that can be called to disable the plugin entirely. After this is called, each window has the default global namespace (`ns_id=0`) restored to it.
+
+For example:
+
+```lua
+require("tint").disable()
+```

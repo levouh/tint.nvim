@@ -14,12 +14,16 @@ CONTENTS                                                           *tint-content
         1.2.4. highlight_ignore_patterns..........|tint-highlight_ignore_patterns|
         1.2.5. window_ignore_function................|tint-window_ignore_function|
         1.2.6. tint_background_colors................|tint-tint_background_colors|
+    1.3. API............................................................|tint-api|
+        1.3.1. enable................................................|tint-enable|
+        1.3.2. disable..............................................|tint-disable|
 
 ================================================================================
 CONTENT                                                             *tint-content*
 
 1.  Setup (#setup)
 2.  Options (#options)
+3.  API (#api)
 
 --------------------------------------------------------------------------------
 SETUP                                                                 *tint-setup*
@@ -136,4 +140,25 @@ type: `boolean`
 default: `false`
 
 Whether or not to tint background portions of highlight groups.
+
+--------------------------------------------------------------------------------
+API                                                                     *tint-api*
+
+ENABLE                                                               *tint-enable*
+
+Function that can be called to enable the plugin after it has been previously disabled.
+
+For example:
+>
+    require("tint").enable()
+<
+
+DISABLE                                                             *tint-disable*
+
+Function that can be called to disable the plugin entirely. After this is called, each window has the default global namespace (`ns_id=0`) restored to it.
+
+For example:
+>
+    require("tint").disable()
+<
 
