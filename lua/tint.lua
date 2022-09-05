@@ -220,6 +220,7 @@ local function setup_user_config()
 
         return false
       end,
+      "'tint' passed invalid value for option 'transforms'",
     },
     tint_background_colors = { __.user_config.tint_background_colors, "boolean" },
     highlight_ignore_patterns = {
@@ -233,6 +234,7 @@ local function setup_user_config()
 
         return true
       end,
+      "'tint' passed invalid value for option 'highlight_ignore_patterns'",
     },
     window_ignore_function = { __.user_config.window_ignore_function, "function", true },
   })
