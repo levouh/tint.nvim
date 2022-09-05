@@ -238,6 +238,17 @@ local function setup_user_config()
   })
 end
 
+local function on_or_after_vimenter(func)
+  if vim.v.vim_did_enter == 1 then
+    func()
+  else
+    vim.api.nvim_create_autocmd({ "VimEnter" }, {
+      callback = func,
+      once = true,
+    })
+  end
+end
+
 --- Triggered by
 ---  `:h WinEnter`
 ---  `:h FocusGained`
@@ -291,7 +302,8 @@ tint.setup = function(user_config)
   end
 
   __.user_config = user_config
-  __.setup_all()
+
+  on_or_after_vimenter(__.setup_all)
 end
 
 return tint
