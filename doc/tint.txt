@@ -26,6 +26,7 @@ CONTENTS                                                           *tint-content
     1.5. Plugin API..............................................|tint-plugin_api|
         1.5.1. plugin-enable..................................|tint-plugin-enable|
         1.5.2. plugin-disable................................|tint-plugin-disable|
+        1.5.3. plugin-refresh................................|tint-plugin-refresh|
 
 ================================================================================
 CONTENT                                                             *tint-content*
@@ -324,5 +325,17 @@ Function that can be called to disable the plugin entirely. After this is called
 For example:
 >
     require("tint").disable()
+<
+
+PLUGIN-REFRESH                                               *tint-plugin-refresh*
+
+If you are noticing that certain colors are not being tinted, it is likely because you have not explicitly defined them anywhere within your own colorscheme.
+`tint` applies changes to your colorscheme (i.e. the global highlight namespace with `ns_id=0`) when its `setup` function is called.
+From this then, if you are e.g. lazy-loading a plugin that declares its own highlight groups (that are not links to other highlight groups), they will not be highlighted.
+
+For example:
+>
+    -- After some new plugin was added that defines its own colors
+    require("tint").refresh()
 <
 

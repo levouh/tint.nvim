@@ -2,12 +2,11 @@
 
 Tint inactive windows in Neovim using window-local highlight namespaces.
 
-## :construction: Important
+## :warning: Caveats
 
-This is still a work in progress, create an issue if you find any.
-
-This feature was added via [!13457](https://github.com/neovim/neovim/pull/13457). Your version of Neovim must
-include this change in order for this to work.
+- This feature was added via [!13457](https://github.com/neovim/neovim/pull/13457). Your version of Neovim must include this change in order for this to work.
+- If you are noticing that certain colors are not being tinted, it is likely because you have not explicitly defined them anywhere within your own colorscheme. `tint` applies changes to your colorscheme (i.e. the global highlight namespace with `ns_id=0`) _when its `setup` function is called_. From this then, if you are e.g. lazy-loading a plugin that declares its own highlight groups (that are not links to other highlight groups), they will not be highlighted.
+  - To help work around this (perhaps until a better solution is found), you can use `require("tint").refresh()` after a plugin loads if you are having issues with its colors.
 
 ## :clapper: Demo
 

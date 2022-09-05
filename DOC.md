@@ -308,3 +308,16 @@ For example:
 ```lua
 require("tint").disable()
 ```
+
+### **plugin-refresh**
+
+If you are noticing that certain colors are not being tinted, it is likely because you have not explicitly defined them anywhere within your own colorscheme.
+`tint` applies changes to your colorscheme (i.e. the global highlight namespace with `ns_id=0`) _when its `setup` function is called_.
+From this then, if you are e.g. lazy-loading a plugin that declares its own highlight groups (that are not links to other highlight groups), they will not be highlighted.
+
+For example:
+
+```lua
+-- After some new plugin was added that defines its own colors
+require("tint").refresh()
+```
