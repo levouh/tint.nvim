@@ -1,79 +1,91 @@
+local colors = require("tint.colors")
+
 local tint = {
-  config = {
-    amt = -40,
-    saturation = 0.7,
-    bg = false,
-    ignore = {},
-    ignorefunc = nil,
+  transforms = {
+    SATURATE_TINT = "saturate_tint",
   },
 }
 
+-- Private "namespace" for functions, etc. that might not be defined before they are used
 local __ = {}
 
-local function get_hex(val)
-  -- Convert decimal to hex
-  return string.format("%06x", val)
-end
+-- Default module configuration values
+__.default_config = {
+  tint = -40,
+  saturation = 0.7,
+  transforms = nil,
+  tint_background_colors = false,
+  highlight_ignore_patterns = {},
+  window_ignore_function = nil,
+}
 
-local function clamp(component)
-  return math.min(math.max(component, 0), 255)
-end
+-- Pre-defined transforms that can be used by the user
+__.transforms = {
+  [tint.transforms.SATURATE_TINT] = function()
+    return {
+      colors.saturate(__.user_config.saturation),
+      colors.tint(__.user_config.tint),
+    }
+  end,
+}
 
----@param col string The hex color to transform.
----@param amt integer The amount to amplify each color component (can be both negative and positive).
----@param saturation integer The amount of saturation to preserve, in the range of [0.0, 1.0].
-local function transform_color(col, amt, saturation)
-  if string.find(col, "^#") then
-    col = string.sub(col, 2)
-  end
-
-  local num = tonumber(col, 16)
-  local r = math.floor(num / 0x10000)
-  local g = (math.floor(num / 0x100) % 0x100)
-  local b = (num % 0x100)
-  if saturation ~= 1 then
-    local rec601_luma = 0.299 * r + 0.587 * g + 0.114 * b
-    r = math.floor(r * saturation + rec601_luma * (1 - saturation))
-    g = math.floor(g * saturation + rec601_luma * (1 - saturation))
-    b = math.floor(b * saturation + rec601_luma * (1 - saturation))
-  end
-
-  return string.format("#%06x", clamp(r + amt) * 0x10000 + clamp(g + amt) * 0x100 + clamp(b + amt))
-end
-
-local function get_def(v)
-  -- Some keys in `v` are not valid - pass only valid ones here
+--- Ensure the passed table has only valid keys to hand to `nvim_set_hl`
+---
+---@param hl_def table Value returned by `nvim_get_hl_by_name` with `rgb` colors exported
+---@return table The passed highlight definition with valid `nvim_set_hl` keys only
+local function ensure_valid_hl_keys(hl_def)
   return {
-    fg = v.fg or v.foreground,
-    bg = v.bg or v.background,
-    sp = v.sp or v.special,
-    blend = v.blend,
-    bold = v.bold,
-    standout = v.standout,
-    underline = v.underline,
-    undercurl = v.undercurl,
-    underdouble = v.underdouble,
-    underdotted = v.underdotted,
-    underdashed = v.underdashed,
-    strikethrough = v.strikethrough,
-    italic = v.italic,
-    reverse = v.reverse,
-    nocombine = v.nocombine,
-    link = v.link,
-    default = v.default,
-    ctermfg = v.ctermfg,
-    ctermbg = v.ctermbg,
-    cterm = v.cterm,
+    fg = hl_def.fg or hl_def.foreground,
+    bg = hl_def.bg or hl_def.background,
+    sp = hl_def.sp or hl_def.special,
+    blend = hl_def.blend,
+    bold = hl_def.bold,
+    standout = hl_def.standout,
+    underline = hl_def.underline,
+    undercurl = hl_def.undercurl,
+    underdouble = hl_def.underdouble,
+    underdotted = hl_def.underdotted,
+    underdashed = hl_def.underdashed,
+    strikethrough = hl_def.strikethrough,
+    italic = hl_def.italic,
+    reverse = hl_def.reverse,
+    nocombine = hl_def.nocombine,
+    link = hl_def.link,
+    default = hl_def.default,
+    ctermfg = hl_def.ctermfg,
+    ctermbg = hl_def.ctermbg,
+    cterm = hl_def.cterm,
   }
 end
 
-local function ignore_tint(winid)
-  return tint.config.ignorefunc and tint.config.ignorefunc(winid) or false
+--- Get the set of transforms to apply to highlight groups from the colorscheme in question
+---
+---@return table A table of functions to transform the input RGB color values by
+local function get_transforms()
+  if type(__.user_config.transforms) == "string" and __.transforms[__.user_config.transforms] then
+    return __.transforms[__.user_config.transforms]()
+  elseif __.user_config.transforms then
+    return __.user_config.transforms
+  else
+    return __.transforms[tint.transforms.SATURATE_TINT]()
+  end
 end
 
-local function ignored(k)
-  for _, pat in ipairs(tint.config.ignore) do
-    if string.find(k, pat) then
+--- Determine if a window should be ignored or not, triggered on `WinLeave`
+---
+---@param winid number Window ID
+---@return boolean Whether or not the window should be ignored for tinting
+local function win_should_ignore_tint(winid)
+  return __.user_config.window_ignore_function and __.user_config.window_ignore_function(winid) or false
+end
+
+--- Determine if a highlight group should be ignored or not
+---
+---@param hl_group_name string The name of the highlight group
+---@return boolean `true` if the group should be ignored, `false` otherwise
+local function hl_group_is_ignored(hl_group_name)
+  for _, pat in ipairs(__.user_config.highlight_ignore_patterns) do
+    if string.find(hl_group_name, pat) then
       return true
     end
   end
@@ -81,41 +93,55 @@ local function ignored(k)
   return false
 end
 
-local function set_default_ns(k, def)
-  vim.api.nvim_set_hl(__.default_ns, k, def)
+--- Create the "default" (non-tinted) highlight namespace
+---
+---@param hl_group_name string
+---@param hl_def table The highlight definition, see `:h nvim_set_hl`
+local function set_default_ns(hl_group_name, hl_def)
+  vim.api.nvim_set_hl(__.default_ns, hl_group_name, hl_def)
 end
 
-local function set_tint_ns(k, def)
-  if def.fg and not ignored(k) then
-    def.fg = transform_color(get_hex(def.fg), tint.config.amt, tint.config.saturation)
+--- Create the "tinted" highlight namespace
+---
+---@param hl_group_name string
+---@param hl_def table The highlight definition, see `:h nvim_set_hl`
+local function set_tint_ns(hl_group_name, hl_def)
+  local hl_group_info = { hl_group_name = hl_group_name }
+
+  if hl_def.fg and not hl_group_is_ignored(hl_group_name) then
+    hl_def.fg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.fg), __.user_config.transforms)
   end
 
-  if tint.config.bg and def.bg and not ignored(k) then
-    def.bg = transform_color(get_hex(def.bg), tint.config.amt, tint.config.saturation)
+  if __.user_config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
+    hl_def.bg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
 
-  vim.api.nvim_set_hl(__.tint_ns, k, def)
+  vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)
 end
 
+--- Setup color namespaces such that they can be set per-window
 local function setup_namespaces()
   if not __.default_ns and not __.tint_ns then
     __.default_ns = vim.api.nvim_create_namespace("_tint_norm")
     __.tint_ns = vim.api.nvim_create_namespace("_tint_dim")
   end
 
-  local defs = vim.api.nvim__get_hl_defs(0)
-  for k, _ in pairs(defs) do
+  for hl_group_name, _ in pairs(vim.api.nvim__get_hl_defs(0)) do
     -- Seems we cannot always ask for `rgb` values from `nvim__get_hl_defs`
-    local v = vim.api.nvim_get_hl_by_name(k, true)
+    local hl_def = vim.api.nvim_get_hl_by_name(hl_group_name, true)
 
     -- Ensure we only have valid keys copied over
-    local def = get_def(v)
-
-    set_default_ns(k, def)
-    set_tint_ns(k, def)
+    hl_def = ensure_valid_hl_keys(hl_def)
+    set_default_ns(hl_group_name, hl_def)
+    set_tint_ns(hl_group_name, hl_def)
   end
 end
 
+--- Setup autocommands to swap (or reconfigure) tint highlight namespaces
+---
+--- `WinLeave`/`FocusLost`: When leaving a window, tint it
+--- `WinEnter`/`FocusGained`: When entering a window, untint it
+--- `ColorScheme`: When changing colorschemes, reconfigure the tint namespaces
 local function setup_autocmds()
   if __.setup_autocmds then
     return
@@ -144,6 +170,7 @@ local function setup_autocmds()
   __.setup_autocmds = true
 end
 
+--- Verify the version of Neovim running has `nvim_win_set_hl_ns`, added via !13457
 local function verify_version()
   if not vim.api.nvim_win_set_hl_ns then
     vim.notify(
@@ -157,47 +184,130 @@ local function verify_version()
   return true
 end
 
+--- Swap old configuration keys to new ones
+local function _user_config_compat(config)
+  config.tint = config.amt or config.tint
+  config.tint_background_colors = config.bg ~= nil and config.bg or config.tint_background_colors
+  config.highlight_ignore_patterns = config.ignore or config.highlight_ignore_patterns
+  config.window_ignore_function = config.ignorefunc or config.window_ignore_function
+end
+
+--- Setup `__.user_config` by overriding defaults with user values
+local function setup_user_config()
+  _user_config_compat(__.user_config or {})
+
+  __.user_config = vim.tbl_extend("force", __.default_config, __.user_config)
+
+  vim.validate({
+    tint = { __.user_config.tint, "number" },
+    saturation = { __.user_config.saturation, "number" },
+    transforms = {
+      __.user_config.transforms,
+      function(val)
+        if type(val) == "string" then
+          return __.transforms[val]
+        elseif type(val) == "table" then
+          for _, v in ipairs(val) do
+            if type(v) ~= "function" then
+              return false
+            end
+          end
+
+          return true
+        elseif val == nil then
+          return true
+        end
+
+        return false
+      end,
+      "'tint' passed invalid value for option 'transforms'",
+    },
+    tint_background_colors = { __.user_config.tint_background_colors, "boolean" },
+    highlight_ignore_patterns = {
+      __.user_config.highlight_ignore_patterns,
+      function(val)
+        for _, v in ipairs(val) do
+          if type(v) ~= "string" then
+            return false
+          end
+        end
+
+        return true
+      end,
+      "'tint' passed invalid value for option 'highlight_ignore_patterns'",
+    },
+    window_ignore_function = { __.user_config.window_ignore_function, "function", true },
+  })
+
+  __.user_config.transforms = get_transforms()
+end
+
+local function on_or_after_vimenter(func)
+  if vim.v.vim_did_enter == 1 then
+    func()
+  else
+    vim.api.nvim_create_autocmd({ "VimEnter" }, {
+      callback = func,
+      once = true,
+    })
+  end
+end
+
+--- Triggered by
+---  `:h WinEnter`
+---  `:h FocusGained`
+--- to restore the default highlight namespace
 __.on_focus = function()
   local winid = vim.api.nvim_get_current_win()
-  if ignore_tint(winid) then
+  if win_should_ignore_tint(winid) then
     return
   end
 
   vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
 end
 
+--- Triggered by
+---  `:h WinLeave`
+---  `:h FocusLost`
+--- to set the tint highlight namespace
 __.on_unfocus = function()
   local winid = vim.api.nvim_get_current_win()
-  if ignore_tint(winid) then
+  if win_should_ignore_tint(winid) then
     return
   end
 
   vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
 end
 
+--- Triggered by `:h ColorScheme`, redefine highlights in both namespaces based on colors
+--- in new colorscheme
 __.on_colorscheme = function()
   __.setup_all()
 end
 
+--- Setup user configuration, highlight namespaces, and autocommands
 __.setup_all = function()
+  setup_user_config()
   setup_namespaces()
   setup_autocmds()
 end
 
+--- Setup the plugin - can be called infinite times but will only do setup once
+---
+---@public
+---@param user_config table User configuration values, see `:h tint-setup`
 tint.setup = function(user_config)
   if not verify_version() then
     return
   end
 
-  if __.setup_module then
+  if __.user_config then
     return
   end
 
-  user_config = user_config or {}
-  tint.config = vim.tbl_extend("force", tint.config, user_config)
+  __.user_config = user_config
 
-  __.setup_module = true
-  __.setup_all()
+  on_or_after_vimenter(__.setup_all)
 end
 
 return tint

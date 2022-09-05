@@ -21,46 +21,56 @@ value (based on what you configure) for inactive windows.
 
 The plugin is responsive to changes in colorscheme via `:h ColorScheme`.
 
-## :electric_plug: Setup
+## :gear: Setup
 
-See a description of all options in [Options](#options).
+See [docs](DOC.md) or `:h tint` for more details.
 
 ```lua
 -- Default configuration
 require("tint").setup()
 
--- Override defaults
+-- Override some defaults
 require("tint").setup({
-  bg = true,  -- Tint background portions of highlight groups
-  amt = -40,  -- Darken colors, use a positive value to brighten
-  ignore = { "WinSeparator", "Status.*" },  -- Highlight group patterns to ignore, see `string.find`
-  ignorefunc = function(winid)
-    local buf = vim.api.nvim_win_get_buf(winid)
-    local buftype vim.api.nvim_buf_get_option(buf, "buftype")
+  tint = -45,  -- Darken colors, use a positive value to brighten
+  saturation = 0.6,  -- Saturation to preserve
+  transforms = require("tint").transforms.SATURATE_TINT,  -- Showing default behavior, but value here can be predefined set of transforms
+  tint_background_colors = true,  -- Tint background portions of highlight groups
+  highlight_ignore_patterns = { "WinSeparator", "Status.*" },  -- Highlight group patterns to ignore, see `string.find`
+  window_ignore_function = function(winid)
+    local bufid = vim.api.nvim_win_get_buf(winid)
+    local buftype = vim.api.nvim_buf_get_option(bufid, "buftype")
+    local floating = vim.api.nvim_win_get_config(winid).relative ~= ""
 
-    if buftype == "terminal" then
-      -- Do not tint `terminal`-type buffers
-      return true
-    end
-
-    -- Tint the window
-    return false
+    -- Do not tint `terminal` or floating windows, tint everything else
+    return buftype == "terminal" or floating
   end
 })
 ```
 
-## :gear: Options
+### Custom color transformations
 
-| Option | Default | Description                                                                                |
-|--------|---------|--------------------------------------------------------------------------------------------|
-| `bg`     | `false`   | Whether or not to tint background portions of highlight groups.              |
-| `amt`    | `-40`     | Amount to change current colorscheme. Negative values darken, positive values brighten.       |
-| `saturation` | `0.7` | The amount of saturation to preserve, in the range of [0.0, 1.0]. |
-| `ignore` | `{}`      | A list of patterns (supplied to `string.find`) for highlight group names to ignore tinting for. |
-| `ignorefunc` | `nil` | A function that will be called for each window to discern whether or not it should be tinted. Arguments are are `(winid)`, return `false` or `nil` to tint a window, anything else to not tint it. |
+If you come up with a cool set of transformations that you think might be useful to others, see the [contributing guide](CONTRIBUTING.md) on how you can make this available for others.
+
+```lua
+-- Handle transformations of highlight groups for the tinted namespace yourself
+require("tint").setup({
+  transforms = {
+    require("tint.colors").saturate(0.5),
+    function(r, g, b, hl_group_info)
+      print("Higlight group name: " .. hl_group_info.hl_group_name)
+
+      local hl_def = vim.api.nvim_get_hl_by_name(hl_group_info.hl_group_name)
+      print("Highlight group definition: " .. vim.inspect(hl_def))
+
+      return r + 1, g + 1, b + 1
+    end
+  }
+})
+```
 
 ## :heart: Acknowledgements
 
 - The harder part of the plugin to dim colors from [StackOverflow](https://stackoverflow.com/questions/72424838/programmatically-lighten-or-darken-a-hex-color-in-lua-nvim-highlight-colors)
 - The general idea from [Shade.nvim](https://github.com/sunjon/Shade.nvim)
-- `bfredl` for making everyones life easier
+- `bfredl` for making everyones life better
+- `williamboman` for adding saturation to better mimic the way `Shade` looks
