@@ -158,7 +158,12 @@ local function verify_version()
 end
 
 __.on_focus = function()
-  vim.api.nvim_win_set_hl_ns(vim.api.nvim_get_current_win(), __.default_ns)
+  local winid = vim.api.nvim_get_current_win()
+  if ignore_tint(winid) then
+    return
+  end
+
+  vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
 end
 
 __.on_unfocus = function()
