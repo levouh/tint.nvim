@@ -111,8 +111,8 @@ end
 
 --- Setup autocommands to swap (or reconfigure) tint highlight namespaces
 ---
---- `WinLeave`: When leaving a window, tint it
---- `WinEnter`: When entering a window, untint it
+--- `WinLeave`/`FocusLost`: When leaving a window, tint it
+--- `WinEnter`/`FocusGained`: When entering a window, untint it
 --- `ColorScheme`: When changing colorschemes, reconfigure the tint namespaces
 local function setup_autocmds()
   if __.setup_autocmds then
