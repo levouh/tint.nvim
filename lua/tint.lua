@@ -1,10 +1,7 @@
 local colors = require("tint.colors")
+local transforms = require("tint.transforms")
 
-local tint = {
-  transforms = {
-    SATURATE_TINT = "saturate_tint",
-  },
-}
+local tint = { transforms = { SATURATE_TINT = "saturate_tint" } }
 
 -- Private "namespace" for functions, etc. that might not be defined before they are used
 local __ = { enabled = true }
@@ -23,8 +20,8 @@ __.default_config = {
 __.transforms = {
   [tint.transforms.SATURATE_TINT] = function()
     return {
-      colors.saturate(__.user_config.saturation),
-      colors.tint(__.user_config.tint),
+      transforms.saturate(__.user_config.saturation),
+      transforms.tint(__.user_config.tint),
     }
   end,
 }
@@ -109,11 +106,11 @@ local function set_tint_ns(hl_group_name, hl_def)
   local hl_group_info = { hl_group_name = hl_group_name }
 
   if hl_def.fg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.fg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.fg), __.user_config.transforms)
+    hl_def.fg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.fg), __.user_config.transforms)
   end
 
   if __.user_config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.bg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
+    hl_def.bg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
 
   vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)

@@ -8,22 +8,33 @@ CONTENTS                                                           *tint-content
 1. Content..........................................................|tint-content|
     1.1. Setup........................................................|tint-setup|
     1.2. Options....................................................|tint-options|
-        1.2.1. tint....................................................|tint-tint|
-        1.2.2. saturation........................................|tint-saturation|
-        1.2.3. transforms........................................|tint-transforms|
-        1.2.4. highlight_ignore_patterns..........|tint-highlight_ignore_patterns|
-        1.2.5. window_ignore_function................|tint-window_ignore_function|
-        1.2.6. tint_background_colors................|tint-tint_background_colors|
-    1.3. API............................................................|tint-api|
-        1.3.1. enable................................................|tint-enable|
-        1.3.2. disable..............................................|tint-disable|
+        1.2.1. option-tint......................................|tint-option-tint|
+        1.2.2. option-saturation..........................|tint-option-saturation|
+        1.2.3. option-transforms..........................|tint-option-transforms|
+        1.2.4. option-highlight_ignore_patterns.|tint-option-highlight_ignore_patterns|
+        1.2.5. option-window_ignore_function..|tint-option-window_ignore_function|
+        1.2.6. option-tint_background_colors..|tint-option-tint_background_colors|
+    1.3. Transforms API......................................|tint-transforms_api|
+        1.3.1. transforms-saturate......................|tint-transforms-saturate|
+        1.3.2. transforms-tint..............................|tint-transforms-tint|
+        1.3.3. transforms-tint_with_threshold.|tint-transforms-tint_with_threshold|
+    1.4. Colors API..............................................|tint-colors_api|
+        1.4.1. colors-get_hex................................|tint-colors-get_hex|
+        1.4.2. colors-clamp....................................|tint-colors-clamp|
+        1.4.3. colors-rgb_to_hex..........................|tint-colors-rgb_to_hex|
+        1.4.4. colors-hex_to_rgb..........................|tint-colors-hex_to_rgb|
+    1.5. Plugin API..............................................|tint-plugin_api|
+        1.5.1. plugin-enable..................................|tint-plugin-enable|
+        1.5.2. plugin-disable................................|tint-plugin-disable|
 
 ================================================================================
 CONTENT                                                             *tint-content*
 
 1.  Setup (#setup)
 2.  Options (#options)
-3.  API (#api)
+3.  Transforms API (#transforms-api)
+4.  Colors API (#colors-api)
+5.  Plugin API (#plugin-api)
 
 --------------------------------------------------------------------------------
 SETUP                                                                 *tint-setup*
@@ -55,7 +66,7 @@ See `CONTRIBUTING.md` for more details on how to add transforms.
     -- Handle transformations of highlight groups for the tinted namespace yourself
     require("tint").setup({
       transforms = {
-        require("tint.colors").saturate(0.5),
+        require("tint.transforms").saturate(0.5),
         function(r, g, b, hl_group_info)
           print("Higlight group name: " .. hl_group_info.hl_group_name)
           local hl_def = vim.api.nvim_get_hl_by_name(hl_group_info.hl_group_name)
@@ -66,26 +77,39 @@ See `CONTRIBUTING.md` for more details on how to add transforms.
     })
 <
 
+Your colorscheme might have colors that are slightly different from your default editor background, and those that are much further away. You want the colors that are further away tinted
+more, and those that are closer tinted less. In order to achieve this, you can set some arbitrary "tint bounding color" and keep all tinted colors some threshold away from it.
+
+Setting this to the `background` portion of your `Normal` highlight group is usually the easiest way to go.
+>
+    require("tint").setup({
+      transforms = {
+        require("tint.transforms").tint_with_threshold(-100, "#1C1C1C", 150),  -- Try to tint by `-100`, but keep all colors at least `150` away from `#1C1C1C`
+        require("tint.transforms").saturate(0.5),
+      }
+    })
+<
+
 --------------------------------------------------------------------------------
 OPTIONS                                                             *tint-options*
 
 All configuration values are optional. If no value is provided, the default will be used.
 
-TINT                                                                   *tint-tint*
+OPTION-TINT                                                     *tint-option-tint*
 
 type: `number`
 default: `-40`
 
 Amount to change current colorscheme. Negative values darken, positive values brighten.
 
-SATURATION                                                       *tint-saturation*
+OPTION-SATURATION                                         *tint-option-saturation*
 
 type: `float`
 default: `0.7`
 
 The amount of saturation to preserve, in the range of `[0.0, 1.0]`.
 
-TRANSFORMS                                                       *tint-transforms*
+OPTION-TRANSFORMS                                         *tint-option-transforms*
 
 type: `table|string`
 default: `tint.transforms.SATURATE_TINT`
@@ -120,21 +144,21 @@ For example:
 
 If you end up finding cool combinations, feel free to submit them to be used by others.
 
-HIGHLIGHT_IGNORE_PATTERNS                         *tint-highlight_ignore_patterns*
+OPTION-HIGHLIGHT_IGNORE_PATTERNS           *tint-option-highlight_ignore_patterns*
 
 type: `table[string]`
 default: `{}`
 
 A list of patterns (supplied to `string.find`) for highlight group names to ignore tinting for.
 
-WINDOW_IGNORE_FUNCTION                               *tint-window_ignore_function*
+OPTION-WINDOW_IGNORE_FUNCTION                 *tint-option-window_ignore_function*
 
 type: `function`
 default: `nil`
 
 A function that will be called for each window to discern whether or not it should be tinted. Arguments are `(winid)`, return `false` or `nil` to tint a window, anything else to not tint it.
 
-TINT_BACKGROUND_COLORS                               *tint-tint_background_colors*
+OPTION-TINT_BACKGROUND_COLORS                 *tint-option-tint_background_colors*
 
 type: `boolean`
 default: `false`
@@ -142,9 +166,149 @@ default: `false`
 Whether or not to tint background portions of highlight groups.
 
 --------------------------------------------------------------------------------
-API                                                                     *tint-api*
+TRANSFORMS API                                               *tint-transforms_api*
 
-ENABLE                                                               *tint-enable*
+Each of the below functions is meant to be used as an entry in the `transforms` key passed in the table to `setup`, like so:
+>
+    require("tint").setup({
+      transforms = {
+        -- transform function here
+      }
+    })
+<
+
+Custom functions can also be passed to this table, but must meet the following criteria:
+
+1.  Must take the following parameters:
+    *   `param` `r`: A red value between `0` and `255`
+    *   `param` `g`: A green value between `0` and `255`
+    *   `param` `b`: A blue value between `0` and `255`
+    *   `param` `hl_group_info`: Information about the highlight group being modified, use `print(vim.inspect(hl_group_info))` for more information
+2.  Must return the following:
+    *   `return`: The same `r`, `g`, and `b` values modified as needed
+
+For example:
+>
+    require("tint").setup({
+      transforms = {
+        function(r, g, b, hl_group_info)
+          print(vim.inspect(hl_group_info))
+          return r + 1, g + 1, b + 1
+        end
+      }
+    })
+<
+
+Along with supporting custom functions, there are a number of builtin functions that can also be used.
+
+TRANSFORMS-SATURATE                                     *tint-transforms-saturate*
+
+Returns a function that takes and returns `r`, `g` and `b` values with the passed value of saturation maintained.
+
+*   `param` `amt`: The amount of saturation to maintain, betwen `0.0` and `1.0`
+>
+        require("tint.transforms").saturate(0.5)
+<
+
+The main intention here is to use this with the `transforms` key in `setup`, like:
+>
+    require("tint").setup({
+      transforms = {
+        require("tint.transforms").saturate(0.5),
+      },
+    })
+<
+
+TRANSFORMS-TINT                                             *tint-transforms-tint*
+
+Return a function that takes and returns `r`, `g` and `b` values with the passed `tint` value applied. Positive values
+will lighten a color, negative values will darken it.
+
+*   `param` `amt`: The amount to tint the passed color. Positive values lighten, negative values darken.
+>
+        require("tint.transforms").tint(-40)
+<
+
+The main intention here is to use this with the `transforms` key in `setup`, like:
+>
+    require("tint").setup({
+      transforms = {
+        require("tint.transforms").tint(-40),
+      },
+    })
+<
+
+TRANSFORMS-TINT_WITH_THRESHOLD               *tint-transforms-tint_with_threshold*
+
+Return a function that takes and returns `r`, `g` and `b` values with the passed `tint` value applied, kept within some
+threshold of the passed value to compare to.
+
+*   `param` `amt`: The amount to tint the passed color. Positive values lighten, negative values darken.
+*   `param` `base`: The color to not go within threshold of, formatted as a 6-digit hexidecimal with a leading `#`
+*   `param` `threshold`: The threshold to stay away from the passed `base` hex color
+>
+        -- Tint by -100, keep 150 away from #1C1C1C
+        require("tint.transforms").tint_with_threshold(-100, "#1C1C1C", 150)
+<
+
+The main intention here is to use this with the `transforms` key in `setup`, like:
+>
+    require("tint").setup({
+      transforms = {
+        require("tint.transforms").tint_with_threshold(-100, "#1C1C1C", 150),
+      },
+    })
+<
+
+--------------------------------------------------------------------------------
+COLORS API                                                       *tint-colors_api*
+
+COLORS-GET_HEX                                               *tint-colors-get_hex*
+
+Translate a base 10 decimal to its base 16 value, limited to 6 characters.
+
+*   `param` `val`: The base 10 `number` value to convert
+*   `return`: The hex string for the passed number, no leading `#`
+>
+        require("tint.colors").get_hex(1842204)  -- 1C1C1C
+<
+
+COLORS-CLAMP                                                   *tint-colors-clamp*
+
+Bound a value between `0` and `255`.
+
+*   `param` `val`: The number to clamp between `0` and `255`
+*   `return`: The value clamped to between `0` and `255`
+>
+        require("tint.colors").clamp(256)  -- 255
+<
+
+COLORS-RGB_TO_HEX                                         *tint-colors-rgb_to_hex*
+
+Transform `r`, `g`, and `b` values to a hexidecimal color value, suitable for declaring a color definition.
+
+*   `param` `r`: The red value of an RGB color
+*   `param` `g`: The green value of an RGB color
+*   `param` `b`: The blue value of an RGB color
+*   `return`: The RGB value as a hex string with a leading `#`
+>
+        require("tint.colors").rgb_to_hex(28, 28, 28)  -- #1C1C1C
+<
+
+COLORS-HEX_TO_RGB                                         *tint-colors-hex_to_rgb*
+
+Transform the passed hexidecimal color string to `r`, `g`, and `b` values.
+
+*   `param` `hex`: A hex string, either with a leading `#` or not
+*   `return`: A tuple of `r`, `g` and `b` values for the passed hex value
+>
+        require("tint.colors").rgb_to_hex("#1C1C1C")  -- 28, 28, 28
+<
+
+--------------------------------------------------------------------------------
+PLUGIN API                                                       *tint-plugin_api*
+
+PLUGIN-ENABLE                                                 *tint-plugin-enable*
 
 Function that can be called to enable the plugin after it has been previously disabled.
 
@@ -153,7 +317,7 @@ For example:
     require("tint").enable()
 <
 
-DISABLE                                                             *tint-disable*
+PLUGIN-DISABLE                                               *tint-plugin-disable*
 
 Function that can be called to disable the plugin entirely. After this is called, each window has the default global namespace (`ns_id=0`) restored to it.
 
