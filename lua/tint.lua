@@ -339,12 +339,17 @@ __.on_colorscheme = function()
     return
   end
 
-  __.setup_all()
+  __.setup_all(true)
 end
 
 --- Setup user configuration, highlight namespaces, and autocommands
-__.setup_all = function()
-  setup_user_config()
+---
+---@param skip_config boolean Whether or not to skip user config setup
+__.setup_all = function(skip_config)
+  if not skip_config then
+    setup_user_config()
+  end
+
   setup_namespaces()
   setup_autocmds()
 end
@@ -360,7 +365,7 @@ tint.enable = function()
   __.enabled = true
 
   -- Reconfigure autocommands, setup highlight namespaces, etc.
-  __.setup_all()
+  __.setup_all(true)
 
   -- Would need to trigger too many autocommands to restore tinting,
   -- so just do this manually
@@ -400,6 +405,13 @@ tint.setup = function(user_config)
   __.user_config = user_config
 
   on_or_after_vimenter(__.setup_all)
+end
+
+--- Refresh highlight namespaces, to be used after new highlight groups are added that need to be tinted
+---
+---@public
+tint.refresh = function()
+  setup_namespaces()
 end
 
 return tint
