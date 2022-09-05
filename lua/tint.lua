@@ -196,7 +196,7 @@ end
 local function setup_user_config()
   _user_config_compat(__.user_config or {})
 
-  __.user_config = vim.tbl_extend("force", __.default_config, __.user_config)
+  __.user_config = vim.tbl_extend("force", __.default_config, __.user_config or {})
 
   vim.validate({
     tint = { __.user_config.tint, "number" },
