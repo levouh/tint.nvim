@@ -63,7 +63,7 @@ end
 ---@return table A table of functions to transform the input RGB color values by
 local function get_transforms()
   if type(__.user_config.transforms) == "string" and __.transforms[__.user_config.transforms] then
-    return __.transforms[__.user_config.transforms]
+    return __.transforms[__.user_config.transforms]()
   elseif __.user_config.transforms then
     return __.user_config.transforms
   else
