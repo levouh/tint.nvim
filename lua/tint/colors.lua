@@ -44,6 +44,7 @@ end
 
 --- Transform a color given a change in tint and saturation
 ---
+---@param hl_group_info table Table containing information about the highlight group being transformed
 ---@param hex string The hex color to transform.
 ---@param transforms table A table of functions used to transform the input hex color
 ---@return string The hex representation color transformed by the configured values

@@ -1,27 +1,32 @@
 local colors = require("tint.colors")
 
 local tint = {
-  config = {
-    tint = -40,
-    saturation = 0.7,
-    transforms = nil,
-    tint_background_colors = false,
-    highlight_ignore_patterns = {},
-    window_ignore_function = nil,
-  },
   transforms = {
     SATURATE_TINT = "saturate_tint",
   },
 }
 
 -- Private "namespace" for functions, etc. that might not be defined before they are used
-local __ = {
-  transforms = {
-    [tint.transforms.SATURATE_TINT] = {
-      colors.saturate(tint.config.saturation),
-      colors.tint(tint.config.tint),
-    },
-  },
+local __ = {}
+
+-- Default module configuration values
+__.default_config = {
+  tint = -40,
+  saturation = 0.7,
+  transforms = nil,
+  tint_background_colors = false,
+  highlight_ignore_patterns = {},
+  window_ignore_function = nil,
+}
+
+-- Pre-defined transforms that can be used by the user
+__.transforms = {
+  [tint.transforms.SATURATE_TINT] = function()
+    return {
+      colors.saturate(__.user_config.saturation),
+      colors.tint(__.user_config.tint),
+    }
+  end,
 }
 
 --- Ensure the passed table has only valid keys to hand to `nvim_set_hl`
@@ -57,12 +62,12 @@ end
 ---
 ---@return table A table of functions to transform the input RGB color values by
 local function get_transforms()
-  if type(tint.config.transforms) == "string" and __.transforms[tint.config.transforms] then
-    return __.transforms[tint.config.transforms]
-  elseif tint.config.transforms then
-    return tint.config.transforms
+  if type(__.user_config.transforms) == "string" and __.transforms[__.user_config.transforms] then
+    return __.transforms[__.user_config.transforms]
+  elseif __.user_config.transforms then
+    return __.user_config.transforms
   else
-    return __.transforms[tint.transforms.SATURATE_TINT]
+    return __.transforms[tint.transforms.SATURATE_TINT]()
   end
 end
 
@@ -71,7 +76,7 @@ end
 ---@param winid number Window ID
 ---@return boolean Whether or not the window should be ignored for tinting
 local function win_should_ignore_tint(winid)
-  return tint.config.window_ignore_function and tint.config.window_ignore_function(winid) or false
+  return __.user_config.window_ignore_function and __.user_config.window_ignore_function(winid) or false
 end
 
 --- Determine if a highlight group should be ignored or not
@@ -79,7 +84,7 @@ end
 ---@param hl_group_name string The name of the highlight group
 ---@return boolean `true` if the group should be ignored, `false` otherwise
 local function hl_group_is_ignored(hl_group_name)
-  for _, pat in ipairs(tint.config.highlight_ignore_patterns) do
+  for _, pat in ipairs(__.user_config.highlight_ignore_patterns) do
     if string.find(hl_group_name, pat) then
       return true
     end
@@ -107,7 +112,7 @@ local function set_tint_ns(hl_group_name, hl_def)
     hl_def.fg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.fg), get_transforms())
   end
 
-  if tint.config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
+  if __.user_config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
     hl_def.bg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.bg), get_transforms())
   end
 
@@ -187,19 +192,17 @@ local function _user_config_compat(config)
   config.window_ignore_function = config.ignorefunc or config.window_ignore_function
 end
 
---- Setup `tint.config` by overriding defaults with user values
----
----@param user_config table User configuration table passed to `setup`
-local function setup_user_config(user_config)
-  _user_config_compat(user_config or {})
+--- Setup `__.user_config` by overriding defaults with user values
+local function setup_user_config()
+  _user_config_compat(__.user_config or {})
 
-  tint.config = vim.tbl_extend("force", tint.config, user_config)
+  __.user_config = vim.tbl_extend("force", __.default_config, __.user_config)
 
   vim.validate({
-    tint = { tint.config.tint, "number" },
-    saturation = { tint.config.saturation, "number" },
+    tint = { __.user_config.tint, "number" },
+    saturation = { __.user_config.saturation, "number" },
     transforms = {
-      tint.config.transforms,
+      __.user_config.transforms,
       function(val)
         if type(val) == "string" then
           return __.transforms[val]
@@ -218,9 +221,9 @@ local function setup_user_config(user_config)
         return false
       end,
     },
-    tint_background_colors = { tint.config.tint_background_colors, "boolean" },
+    tint_background_colors = { __.user_config.tint_background_colors, "boolean" },
     highlight_ignore_patterns = {
-      tint.config.highlight_ignore_patterns,
+      __.user_config.highlight_ignore_patterns,
       function(val)
         for _, v in ipairs(val) do
           if type(v) ~= "string" then
@@ -231,7 +234,7 @@ local function setup_user_config(user_config)
         return true
       end,
     },
-    window_ignore_function = { tint.config.window_ignore_function, "function", true },
+    window_ignore_function = { __.user_config.window_ignore_function, "function", true },
   })
 end
 
@@ -268,8 +271,8 @@ __.on_colorscheme = function()
 end
 
 --- Setup user configuration, highlight namespaces, and autocommands
-__.setup_all = function(user_config)
-  setup_user_config(user_config)
+__.setup_all = function()
+  setup_user_config()
   setup_namespaces()
   setup_autocmds()
 end
@@ -283,12 +286,12 @@ tint.setup = function(user_config)
     return
   end
 
-  if __.setup_module then
+  if __.user_config then
     return
   end
 
-  __.setup_module = true
-  __.setup_all(user_config)
+  __.user_config = user_config
+  __.setup_all()
 end
 
 return tint
