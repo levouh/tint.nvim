@@ -109,11 +109,11 @@ local function set_tint_ns(hl_group_name, hl_def)
   local hl_group_info = { hl_group_name = hl_group_name }
 
   if hl_def.fg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.fg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.fg), get_transforms())
+    hl_def.fg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.fg), __.user_config.transforms)
   end
 
   if __.user_config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.bg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.bg), get_transforms())
+    hl_def.bg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
 
   vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)
@@ -236,6 +236,8 @@ local function setup_user_config()
     },
     window_ignore_function = { __.user_config.window_ignore_function, "function", true },
   })
+
+  __.user_config.transforms = get_transforms()
 end
 
 local function on_or_after_vimenter(func)
