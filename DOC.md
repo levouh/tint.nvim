@@ -309,6 +309,16 @@ For example:
 require("tint").disable()
 ```
 
+### **plugin-toggle**
+
+Function that toggle enabling and disabling the plugin.
+
+For example:
+
+```lua
+require("tint").toggle()
+```
+
 ### **plugin-refresh**
 
 If you are noticing that certain colors are not being tinted, it is likely because you have not explicitly defined them anywhere within your own colorscheme.

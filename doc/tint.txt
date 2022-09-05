@@ -26,7 +26,8 @@ CONTENTS                                                           *tint-content
     1.5. Plugin API..............................................|tint-plugin_api|
         1.5.1. plugin-enable..................................|tint-plugin-enable|
         1.5.2. plugin-disable................................|tint-plugin-disable|
-        1.5.3. plugin-refresh................................|tint-plugin-refresh|
+        1.5.3. plugin-toggle..................................|tint-plugin-toggle|
+        1.5.4. plugin-refresh................................|tint-plugin-refresh|
 
 ================================================================================
 CONTENT                                                             *tint-content*
@@ -325,6 +326,15 @@ Function that can be called to disable the plugin entirely. After this is called
 For example:
 >
     require("tint").disable()
+<
+
+PLUGIN-TOGGLE                                                 *tint-plugin-toggle*
+
+Function that toggle enabling and disabling the plugin.
+
+For example:
+>
+    require("tint").toggle()
 <
 
 PLUGIN-REFRESH                                               *tint-plugin-refresh*

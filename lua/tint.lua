@@ -389,6 +389,17 @@ tint.disable = function()
   __.enabled = false
 end
 
+--- Toggle the plugin being enabled and/or disabled
+---
+---@public
+tint.toggle = function()
+  if __.enabled then
+    tint.disable()
+  else
+    tint.enable()
+  end
+end
+
 --- Setup the plugin - can be called infinite times but will only do setup once
 ---
 ---@public
