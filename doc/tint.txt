@@ -9,9 +9,10 @@ CONTENTS                                                           *tint-content
     2. Options......................................................|tint-options|
         2.1. tint......................................................|tint-tint|
         2.2. saturation..........................................|tint-saturation|
-        2.3. highlight_ignore_patterns............|tint-highlight_ignore_patterns|
-        2.4. window_ignore_function..................|tint-window_ignore_function|
-        2.5. tint_background_colors..................|tint-tint_background_colors|
+        2.3. transforms..........................................|tint-transforms|
+        2.4. highlight_ignore_patterns............|tint-highlight_ignore_patterns|
+        2.5. window_ignore_function..................|tint-window_ignore_function|
+        2.6. tint_background_colors..................|tint-tint_background_colors|
 
 1.  Setup (#setup)
 2.  Options (#options)
@@ -23,10 +24,11 @@ SETUP                                                                 *tint-setu
 >
     -- Default configuration
     require("tint").setup()
-    -- Override defaults
+    -- Override some defaults
     require("tint").setup({
       tint = -45,  -- Darken colors, use a positive value to brighten
       saturation = 0.6,  -- Saturation to preserve
+      transforms = require("tint").transforms.SATURATE_TINT,  -- Showing default behavior, but value here can be predefined set of transforms
       tint_background_colors = true,  -- Tint background portions of highlight groups
       highlight_ignore_patterns = { "WinSeparator", "Status.*" },  -- Highlight group patterns to ignore, see `string.find`
       window_ignore_function = function(winid)
@@ -37,10 +39,24 @@ SETUP                                                                 *tint-setu
         return buftype == "terminal" or floating
       end
     })
+    -- Handle transformations of highlight groups for the tinted namespace yourself
+    require("tint").setup({
+      transforms = {
+        require("tint.colors").saturate(0.5),
+        function(r, g, b, hl_group_info)
+          print("Higlight group name: " .. hl_group_info.hl_group_name)
+          local hl_def = vim.api.nvim_get_hl_by_name(hl_group_info.hl_group_name)
+          print("Highlight group definition: " .. vim.inspect(hl_def))
+          return r + 1, g + 1, b + 1
+        end
+      }
+    })
 <
 
 --------------------------------------------------------------------------------
 OPTIONS                                                             *tint-options*
+
+All configuration values are optional. If no value is provided, the default will be used.
 
 TINT                                                                   *tint-tint*
 
@@ -55,6 +71,41 @@ type: `float`
 default: `0.7`
 
 The amount of saturation to preserve, in the range of `[0.0, 1.0]`.
+
+TRANSFORMS                                                       *tint-transforms*
+
+type: `table|string`
+default: `tint.transforms.SATURATE_TINT`
+
+A predefined set of transforms as a `string`, can be one of:
+
+`require("tint").transforms.SATURATE_TINT`: Saturate and tint using `saturation` and `tint` config values
+
+Or table of functions that each accept the following arguments:
+
+`r`: `number` The red component of the highlight group in question
+`g`: `number` The green component of the highlight group in question
+`b`: `number` The blue component of the highlight group in question
+`hl_group_info`: `table` Information about the highlight group being tinted, including:
+  `hl_group_name`: `string` The name of the highlight group being altered
+
+and each return the `r`, `g` and `b` values modified as needed.
+
+For example:
+>
+    require("tint").setup({
+      transforms = {
+        function(r, g, b, hl_group_info)
+          print("Higlight group name: " .. hl_group_info.hl_group_name)
+          local hl_def = vim.api.nvim_get_hl_by_name(hl_group_info.hl_group_name)
+          print("Highlight group definition: " .. vim.inspect(hl_def))
+          return r + 1, g + 1, b + 1
+        end
+      }
+    })
+<
+
+If you end up finding cool combinations, feel free to submit them to be used by others.
 
 HIGHLIGHT_IGNORE_PATTERNS                         *tint-highlight_ignore_patterns*
 

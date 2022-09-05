@@ -20,7 +20,7 @@ end
 ---
 ---@param amt number The amount to saturate the color by
 colors.saturate = function(amt)
-  return function(r, g, b)
+  return function(r, g, b, _)
     if amt ~= 1 then
       local rec601_luma = 0.299 * r + 0.587 * g + 0.114 * b
 
@@ -37,7 +37,7 @@ end
 ---
 ---@param amt number The amount to lighten or darken the color by
 colors.tint = function(amt)
-  return function(r, g, b)
+  return function(r, g, b, _)
     return r + amt, g + amt, b + amt
   end
 end
@@ -47,11 +47,11 @@ end
 ---@param hex string The hex color to transform.
 ---@param transforms table A table of functions used to transform the input hex color
 ---@return string The hex representation color transformed by the configured values
-colors.transform_color = function(hex, transforms)
+colors.transform_color = function(hl_group_info, hex, transforms)
   local r, g, b = colors.hex_to_rgb(hex)
 
   for _, transform in ipairs(transforms) do
-    r, g, b = transform(r, g, b)
+    r, g, b = transform(r, g, b, hl_group_info)
   end
 
   return colors.rgb_to_hex(r, g, b)

@@ -4,14 +4,25 @@ local tint = {
   config = {
     tint = -40,
     saturation = 0.7,
+    transforms = nil,
     tint_background_colors = false,
     highlight_ignore_patterns = {},
     window_ignore_function = nil,
   },
+  transforms = {
+    SATURATE_TINT = "saturate_tint",
+  },
 }
 
 -- Private "namespace" for functions, etc. that might not be defined before they are used
-local __ = {}
+local __ = {
+  transforms = {
+    [tint.transforms.SATURATE_TINT] = {
+      colors.saturate(tint.config.saturation),
+      colors.tint(tint.config.tint),
+    },
+  },
+}
 
 --- Ensure the passed table has only valid keys to hand to `nvim_set_hl`
 ---
@@ -40,6 +51,19 @@ local function ensure_valid_hl_keys(hl_def)
     ctermbg = hl_def.ctermbg,
     cterm = hl_def.cterm,
   }
+end
+
+--- Get the set of transforms to apply to highlight groups from the colorscheme in question
+---
+---@return table A table of functions to transform the input RGB color values by
+local function get_transforms()
+  if type(tint.config.transforms) == "string" and __.transforms[tint.config.transforms] then
+    return __.transforms[tint.config.transforms]
+  elseif tint.config.transforms then
+    return tint.config.transforms
+  else
+    return __.transforms[tint.transforms.SATURATE_TINT]
+  end
 end
 
 --- Determine if a window should be ignored or not, triggered on `WinLeave`
@@ -77,15 +101,14 @@ end
 ---@param hl_group_name string
 ---@param hl_def table The highlight definition, see `:h nvim_set_hl`
 local function set_tint_ns(hl_group_name, hl_def)
+  local hl_group_info = { hl_group_name = hl_group_name }
+
   if hl_def.fg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.fg = colors.transform_color(colors.get_hex(hl_def.fg), {
-      colors.tint(tint.config.tint),
-      colors.saturate(tint.config.saturation),
-    })
+    hl_def.fg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.fg), get_transforms())
   end
 
   if tint.config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
-    hl_def.bg = colors.transform_color(colors.get_hex(hl_def.bg), tint.config.tint, tint.config.saturation)
+    hl_def.bg = colors.transform_color(hl_group_info, colors.get_hex(hl_def.bg), get_transforms())
   end
 
   vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)
@@ -171,6 +194,45 @@ local function setup_user_config(user_config)
   _user_config_compat(user_config or {})
 
   tint.config = vim.tbl_extend("force", tint.config, user_config)
+
+  vim.validate({
+    tint = { tint.config.tint, "number" },
+    saturation = { tint.config.saturation, "number" },
+    transforms = {
+      tint.config.transforms,
+      function(val)
+        if type(val) == "string" then
+          return __.transforms[val]
+        elseif type(val) == "table" then
+          for _, v in ipairs(val) do
+            if type(v) ~= "function" then
+              return false
+            end
+          end
+
+          return true
+        elseif val == nil then
+          return true
+        end
+
+        return false
+      end,
+    },
+    tint_background_colors = { tint.config.tint_background_colors, "boolean" },
+    highlight_ignore_patterns = {
+      tint.config.highlight_ignore_patterns,
+      function(val)
+        for _, v in ipairs(val) do
+          if type(v) ~= "string" then
+            return false
+          end
+        end
+
+        return true
+      end,
+    },
+    window_ignore_function = { tint.config.window_ignore_function, "function", true },
+  })
 end
 
 --- Triggered by

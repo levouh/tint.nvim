@@ -29,10 +29,11 @@ See [docs](DOC.md) or `:h tint` for more details.
 -- Default configuration
 require("tint").setup()
 
--- Override defaults
+-- Override some defaults
 require("tint").setup({
   tint = -45,  -- Darken colors, use a positive value to brighten
   saturation = 0.6,  -- Saturation to preserve
+  transforms = require("tint").transforms.SATURATE_TINT,  -- Showing default behavior, but value here can be predefined set of transforms
   tint_background_colors = true,  -- Tint background portions of highlight groups
   highlight_ignore_patterns = { "WinSeparator", "Status.*" },  -- Highlight group patterns to ignore, see `string.find`
   window_ignore_function = function(winid)
@@ -43,6 +44,21 @@ require("tint").setup({
     -- Do not tint `terminal` or floating windows, tint everything else
     return buftype == "terminal" or floating
   end
+})
+
+-- Handle transformations of highlight groups for the tinted namespace yourself
+require("tint").setup({
+  transforms = {
+    require("tint.colors").saturate(0.5),
+    function(r, g, b, hl_group_info)
+      print("Higlight group name: " .. hl_group_info.hl_group_name)
+
+      local hl_def = vim.api.nvim_get_hl_by_name(hl_group_info.hl_group_name)
+      print("Highlight group definition: " .. vim.inspect(hl_def))
+
+      return r + 1, g + 1, b + 1
+    end
+  }
 })
 ```
 
