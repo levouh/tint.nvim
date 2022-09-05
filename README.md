@@ -45,7 +45,13 @@ require("tint").setup({
     return buftype == "terminal" or floating
   end
 })
+```
 
+### Custom color transformations
+
+If you come up with a cool set of transformations that you think might be useful to others, see the [contributing guide](CONTRIBUTING.md) on how you can make this available for others.
+
+```lua
 -- Handle transformations of highlight groups for the tinted namespace yourself
 require("tint").setup({
   transforms = {
