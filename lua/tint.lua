@@ -123,13 +123,13 @@ local function setup_autocmds()
 
   local augroup = vim.api.nvim_create_augroup("_tint", { clear = true })
 
-  vim.api.nvim_create_autocmd({ "WinEnter" }, {
+  vim.api.nvim_create_autocmd({ "FocusGained", "WinEnter" }, {
     group = augroup,
     pattern = { "*" },
     callback = __.on_focus,
   })
 
-  vim.api.nvim_create_autocmd({ "WinLeave" }, {
+  vim.api.nvim_create_autocmd({ "FocusLost", "WinLeave" }, {
     group = augroup,
     pattern = { "*" },
     callback = __.on_unfocus,
