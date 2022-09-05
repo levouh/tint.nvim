@@ -68,6 +68,10 @@ require("tint").setup({
 })
 ```
 
+## :desktop_computer: API
+
+See [docs](DOC.md) or `:h tint` for more details.
+
 ## :heart: Acknowledgements
 
 - The harder part of the plugin to dim colors from [StackOverflow](https://stackoverflow.com/questions/72424838/programmatically-lighten-or-darken-a-hex-color-in-lua-nvim-highlight-colors)

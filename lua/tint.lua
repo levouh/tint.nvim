@@ -7,7 +7,7 @@ local tint = {
 }
 
 -- Private "namespace" for functions, etc. that might not be defined before they are used
-local __ = {}
+local __ = { enabled = true }
 
 -- Default module configuration values
 __.default_config = {
@@ -137,6 +137,13 @@ local function setup_namespaces()
   end
 end
 
+--- Create an `:h augroup` for autocommands used by this plugin
+---
+---@return number Identifier for created augroup
+local function create_augroup()
+  return vim.api.nvim_create_augroup("_tint", { clear = true })
+end
+
 --- Setup autocommands to swap (or reconfigure) tint highlight namespaces
 ---
 --- `WinLeave`/`FocusLost`: When leaving a window, tint it
@@ -147,7 +154,7 @@ local function setup_autocmds()
     return
   end
 
-  local augroup = vim.api.nvim_create_augroup("_tint", { clear = true })
+  local augroup = create_augroup()
 
   vim.api.nvim_create_autocmd({ "FocusGained", "WinEnter" }, {
     group = augroup,
@@ -242,6 +249,9 @@ local function setup_user_config()
   __.user_config.transforms = get_transforms()
 end
 
+--- Ensure the passed function runs after `:h VimEnter` has run
+---
+---@param func function The function to call only after `VimEnter` is done
 local function on_or_after_vimenter(func)
   if vim.v.vim_did_enter == 1 then
     func()
@@ -253,11 +263,53 @@ local function on_or_after_vimenter(func)
   end
 end
 
+--- Iterate all windows in all tabpages and call the passed function on them
+---
+---@param func function Function to be called with each `(winid, tabpage)` as its parameters
+local function iterate_all_windows(func)
+  for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
+    if vim.api.nvim_tabpage_is_valid(tabpage) then
+      for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
+        if vim.api.nvim_win_is_valid(winid) then
+          func(winid, tabpage)
+        end
+      end
+    end
+  end
+end
+
+--- Restore the global highlight namespace in all windows
+local function restore_default_highlight_namespaces()
+  iterate_all_windows(function(winid, _)
+    vim.api.nvim_win_set_hl_ns(winid, 0)
+  end)
+end
+
+--- Set the tint highlight namespace in all unfocused windows
+local function set_tint_highlight_namespaces()
+  iterate_all_windows(function(winid, _)
+    if winid ~= vim.api.nvim_get_current_win() then
+      vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+    end
+  end)
+end
+
+--- Check if this plugin is currently enabled
+---
+---@return boolean Truth-y if enabled, false-y otherwise
+local function check_enabled()
+  return __.enabled
+end
+
 --- Triggered by
 ---  `:h WinEnter`
 ---  `:h FocusGained`
 --- to restore the default highlight namespace
 __.on_focus = function()
+  if not check_enabled() then
+    return
+  end
+
   local winid = vim.api.nvim_get_current_win()
   if win_should_ignore_tint(winid) then
     return
@@ -271,6 +323,10 @@ end
 ---  `:h FocusLost`
 --- to set the tint highlight namespace
 __.on_unfocus = function()
+  if not check_enabled() then
+    return
+  end
+
   local winid = vim.api.nvim_get_current_win()
   if win_should_ignore_tint(winid) then
     return
@@ -282,6 +338,10 @@ end
 --- Triggered by `:h ColorScheme`, redefine highlights in both namespaces based on colors
 --- in new colorscheme
 __.on_colorscheme = function()
+  if not check_enabled() then
+    return
+  end
+
   __.setup_all()
 end
 
@@ -290,6 +350,41 @@ __.setup_all = function()
   setup_user_config()
   setup_namespaces()
   setup_autocmds()
+end
+
+--- Enable this plugin
+---
+---@public
+tint.enable = function()
+  if __.enabled then
+    return
+  end
+
+  __.enabled = true
+
+  -- Reconfigure autocommands, setup highlight namespaces, etc.
+  __.setup_all()
+
+  -- Would need to trigger too many autocommands to restore tinting,
+  -- so just do this manually
+  set_tint_highlight_namespaces()
+end
+
+--- Disable this plugin
+---
+---@public
+tint.disable = function()
+  if not __.enabled then
+    return
+  end
+
+  -- Disable autocommands
+  create_augroup()
+  __.setup_autocmds = false
+
+  restore_default_highlight_namespaces()
+
+  __.enabled = false
 end
 
 --- Setup the plugin - can be called infinite times but will only do setup once
