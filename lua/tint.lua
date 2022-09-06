@@ -189,18 +189,23 @@ local function verify_version()
 end
 
 --- Swap old configuration keys to new ones
-local function _user_config_compat(config)
-  config.tint = config.amt or config.tint
-  config.tint_background_colors = config.bg ~= nil and config.bg or config.tint_background_colors
-  config.highlight_ignore_patterns = config.ignore or config.highlight_ignore_patterns
-  config.window_ignore_function = config.ignorefunc or config.window_ignore_function
+---
+---@param user_config table User configuration table
+local function _user_config_compat(user_config)
+  local new_config = vim.deepcopy(user_config)
+
+  -- Copy over old configuration values here before calling `tbl_extend` later
+  new_config.tint = user_config.amt or user_config.tint
+  new_config.tint_background_colors = user_config.bg ~= nil and user_config.bg or user_config.tint_background_colors
+  new_config.highlight_ignore_patterns = user_config.ignore or user_config.highlight_ignore_patterns
+  new_config.window_ignore_function = user_config.ignorefunc or user_config.window_ignore_function
+
+  return new_config
 end
 
 --- Setup `__.user_config` by overriding defaults with user values
 local function setup_user_config()
-  _user_config_compat(__.user_config or {})
-
-  __.user_config = vim.tbl_extend("force", __.default_config, __.user_config or {})
+  __.user_config = vim.tbl_extend("force", __.default_config, _user_config_compat(__.user_config or {}))
 
   vim.validate({
     tint = { __.user_config.tint, "number" },
@@ -298,11 +303,14 @@ local function check_enabled()
   return __.enabled
 end
 
---- Triggered by
+--- Triggered by:
 ---  `:h WinEnter`
 ---  `:h FocusGained`
---- to restore the default highlight namespace
-__.on_focus = function()
+---
+--- Restore the default highlight namespace
+---
+---@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+__.on_focus = function(_)
   if not check_enabled() then
     return
   end
@@ -315,11 +323,14 @@ __.on_focus = function()
   vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
 end
 
---- Triggered by
+--- Triggered by:
 ---  `:h WinLeave`
 ---  `:h FocusLost`
---- to set the tint highlight namespace
-__.on_unfocus = function()
+---
+--- Set the tint highlight namespace
+---
+---@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+__.on_unfocus = function(_)
   if not check_enabled() then
     return
   end
@@ -332,9 +343,13 @@ __.on_unfocus = function()
   vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
 end
 
---- Triggered by `:h ColorScheme`, redefine highlights in both namespaces based on colors
---- in new colorscheme
-__.on_colorscheme = function()
+--- Triggered by:
+---   `:h ColorScheme`
+---
+--- Redefine highlights in both namespaces based on colors in new colorscheme
+---
+---@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+__.on_colorscheme = function(_)
   if not check_enabled() then
     return
   end
@@ -342,9 +357,9 @@ __.on_colorscheme = function()
   __.setup_all(true)
 end
 
---- Setup user configuration, highlight namespaces, and autocommands
+--- Setup everything required for this module to run
 ---
----@param skip_config boolean Whether or not to skip user config setup
+---@param skip_config boolean Skip re-doing user configuration setup, useful when re-enabling, etc.
 __.setup_all = function(skip_config)
   if not skip_config then
     setup_user_config()
@@ -354,17 +369,29 @@ __.setup_all = function(skip_config)
   setup_autocmds()
 end
 
+--- Setup user configuration, highlight namespaces, and autocommands
+---
+--- Triggered by:
+---   `:h VimEnter`
+---
+---@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+__.setup_callback = function(_)
+  __.setup_all()
+end
+
 --- Enable this plugin
 ---
 ---@public
 tint.enable = function()
-  if __.enabled then
+  if __.enabled or not __.user_config then
     return
   end
 
   __.enabled = true
 
   -- Reconfigure autocommands, setup highlight namespaces, etc.
+  --
+  -- Skip user config setup as this has already happened
   __.setup_all(true)
 
   -- Would need to trigger too many autocommands to restore tinting,
@@ -376,7 +403,7 @@ end
 ---
 ---@public
 tint.disable = function()
-  if not __.enabled then
+  if not __.enabled or not __.user_config then
     return
   end
 
@@ -415,13 +442,17 @@ tint.setup = function(user_config)
 
   __.user_config = user_config
 
-  on_or_after_vimenter(__.setup_all)
+  on_or_after_vimenter(__.setup_callback)
 end
 
 --- Refresh highlight namespaces, to be used after new highlight groups are added that need to be tinted
 ---
 ---@public
 tint.refresh = function()
+  if not __.user_config then
+    return
+  end
+
   setup_namespaces()
 end
 
