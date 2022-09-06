@@ -14,6 +14,7 @@ CONTENTS                                                           *tint-content
         1.2.4. option-highlight_ignore_patterns.|tint-option-highlight_ignore_patterns|
         1.2.5. option-window_ignore_function..|tint-option-window_ignore_function|
         1.2.6. option-tint_background_colors..|tint-option-tint_background_colors|
+        1.2.7. option-focus_change_events........|tint-option-focus_change_events|
     1.3. Transforms API......................................|tint-transforms_api|
         1.3.1. transforms-saturate......................|tint-transforms-saturate|
         1.3.2. transforms-tint..............................|tint-transforms-tint|
@@ -166,6 +167,18 @@ type: `boolean`
 default: `false`
 
 Whether or not to tint background portions of highlight groups.
+
+OPTION-FOCUS_CHANGE_EVENTS                       *tint-option-focus_change_events*
+
+type: `table`
+default: `{ focus = { "WinEnter" }, unfocus = { "WinLeave" } }`
+
+A table containing two keys:
+
+*   `focus`: When a window becomes focused (untinted)
+*   `unfocus`: When a window becomes unfocused (tinted)
+
+Each of which should have a table of strings, each string being a valid `:h events` value.
 
 --------------------------------------------------------------------------------
 TRANSFORMS API                                               *tint-transforms_api*

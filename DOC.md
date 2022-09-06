@@ -137,6 +137,17 @@ A function that will be called for each window to discern whether or not it shou
 
 Whether or not to tint background portions of highlight groups.
 
+### **option-focus_change_events**
+*type*: `table`
+*default*: `{ focus = { "WinEnter" }, unfocus = { "WinLeave" } }`
+
+A table containing two keys:
+
+- `focus`: When a window becomes focused (untinted)
+- `unfocus`: When a window becomes unfocused (tinted)
+
+Each of which should have a table of strings, each string being a valid `:h events` value.
+
 ## Transforms API
 
 Each of the below functions is meant to be used as an entry in the `transforms` key passed in the table to `setup`, like so:
