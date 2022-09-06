@@ -8,6 +8,7 @@ Tint inactive windows in Neovim using window-local highlight namespaces.
 - If you are noticing that certain colors are not being tinted, it is because likely they are defined _after_ `tint` has been loaded and are "standalone" (i.e. not `link`).
   - `tint` applies changes to your colorscheme (i.e. the global highlight namespace with `ns_id=0`) _when its `setup` function is called_. From this then, if you are lazy-loading a different plugin that declares its own standalone highlight groups and loads after `tint`, they will likely not work as intended.
   - To help work around this (perhaps until a better solution is found), you can use `require("tint").refresh()` after a plugin loads if you are having issues with its colors.
+- Highlight groups that "replace" another in unfocused windows (e.g. `NormalNC` "replacing" `Normal`) must have _both_ highlight groups defined. The `*NC` group is what will be tinted in unfocused windows.
 
 ## :clapper: Demo
 
