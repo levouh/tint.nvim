@@ -14,6 +14,10 @@ __.default_config = {
   tint_background_colors = false,
   highlight_ignore_patterns = {},
   window_ignore_function = nil,
+  focus_change_events = {
+    focus = { "WinEnter" },
+    unfocus = { "WinLeave" },
+  },
 }
 
 -- Pre-defined transforms that can be used by the user
@@ -143,8 +147,8 @@ end
 
 --- Setup autocommands to swap (or reconfigure) tint highlight namespaces
 ---
---- `WinLeave`/`FocusLost`: When leaving a window, tint it
---- `WinEnter`/`FocusGained`: When entering a window, untint it
+--- `__.user_config.focus_change_events.focus`: Tint the window
+---  `__.user_config.focus_change_events.unfocus`: Untint the window
 --- `ColorScheme`: When changing colorschemes, reconfigure the tint namespaces
 local function setup_autocmds()
   if __.setup_autocmds then
@@ -153,13 +157,13 @@ local function setup_autocmds()
 
   local augroup = create_augroup()
 
-  vim.api.nvim_create_autocmd({ "FocusGained", "WinEnter" }, {
+  vim.api.nvim_create_autocmd(__.user_config.focus_change_events.focus, {
     group = augroup,
     pattern = { "*" },
     callback = __.on_focus,
   })
 
-  vim.api.nvim_create_autocmd({ "FocusLost", "WinLeave" }, {
+  vim.api.nvim_create_autocmd(__.user_config.focus_change_events.unfocus, {
     group = augroup,
     pattern = { "*" },
     callback = __.on_unfocus,
@@ -188,10 +192,11 @@ local function verify_version()
   return true
 end
 
---- Swap old configuration keys to new ones
+--- Swap old configuration keys to new ones, handle cases `tbl_extend` does not (nested config values)
 ---
 ---@param user_config table User configuration table
-local function _user_config_compat(user_config)
+---@return table Modified user configuration
+local function get_user_config(user_config)
   local new_config = vim.deepcopy(user_config)
 
   -- Copy over old configuration values here before calling `tbl_extend` later
@@ -200,12 +205,19 @@ local function _user_config_compat(user_config)
   new_config.highlight_ignore_patterns = user_config.ignore or user_config.highlight_ignore_patterns
   new_config.window_ignore_function = user_config.ignorefunc or user_config.window_ignore_function
 
+  if new_config.focus_change_events then
+    new_config.focus_change_events.focus = new_config.focus_change_events.focus
+      or __.default_config.focus_change_events.focus
+    new_config.focus_change_events.unfocus = new_config.focus_change_events.unfocus
+      or __.default_config.focus_change_events.unfocus
+  end
+
   return new_config
 end
 
 --- Setup `__.user_config` by overriding defaults with user values
 local function setup_user_config()
-  __.user_config = vim.tbl_extend("force", __.default_config, _user_config_compat(__.user_config or {}))
+  __.user_config = vim.tbl_extend("force", __.default_config, get_user_config(__.user_config or {}))
 
   vim.validate({
     tint = { __.user_config.tint, "number" },
@@ -246,6 +258,33 @@ local function setup_user_config()
       "'tint' passed invalid value for option 'highlight_ignore_patterns'",
     },
     window_ignore_function = { __.user_config.window_ignore_function, "function", true },
+    focus_change_events = {
+      __.user_config.focus_change_events,
+      function(val)
+        if type(val) ~= "table" then
+          return false
+        end
+
+        if not val.focus or not val.unfocus then
+          return false
+        end
+
+        for _, v in ipairs(val.focus) do
+          if type(v) ~= "string" then
+            return false
+          end
+        end
+
+        for _, v in ipairs(val.unfocus) do
+          if type(v) ~= "string" then
+            return false
+          end
+        end
+
+        return true
+      end,
+      "'tint' passed invalid value for option 'focus_change_events'",
+    },
   })
 
   __.user_config.transforms = get_transforms()
