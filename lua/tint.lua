@@ -113,6 +113,10 @@ local function set_tint_ns(hl_group_name, hl_def)
     hl_def.fg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.fg), __.user_config.transforms)
   end
 
+  if hl_def.sp and not hl_group_is_ignored(hl_group_name) then
+    hl_def.sp = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.sp), __.user_config.transforms)
+  end
+
   if __.user_config.tint_background_colors and hl_def.bg and not hl_group_is_ignored(hl_group_name) then
     hl_def.bg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
