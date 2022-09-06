@@ -11,7 +11,7 @@ Tint inactive windows in Neovim using window-local highlight namespaces.
 
 ## :clapper: Demo
 
-![tint](https://user-images.githubusercontent.com/31262046/188242698-3588074d-176b-4926-834f-ab9cf6302cd2.gif)
+![tint](https://user-images.githubusercontent.com/31262046/188531978-548504c2-ea0c-433b-915f-5bb5690e6266.mp4)
 
 ## :grey_question: About
 
