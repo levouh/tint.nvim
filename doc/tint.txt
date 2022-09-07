@@ -29,6 +29,8 @@ CONTENTS                                                           *tint-content
         1.5.2. plugin-disable................................|tint-plugin-disable|
         1.5.3. plugin-toggle..................................|tint-plugin-toggle|
         1.5.4. plugin-refresh................................|tint-plugin-refresh|
+        1.5.5. plugin-tint......................................|tint-plugin-tint|
+        1.5.6. plugin-untint..................................|tint-plugin-untint|
 
 ================================================================================
 CONTENT                                                             *tint-content*
@@ -360,5 +362,35 @@ For example:
 >
     -- After some new plugin was added that defines its own colors
     require("tint").refresh()
+<
+
+PLUGIN-TINT                                                     *tint-plugin-tint*
+
+A way to manually tint a window given some criteria defined yourself.
+
+For example:
+>
+    vim.api.nvim_create_autocmd("DiffUpdated", {
+      group = vim.api.nvim_create_augroup("foo", { clear = true }),
+      pattern = { "*" },
+      callback = function(_)
+        require("tint").tint(vim.api.nvim_get_current_win())
+      end
+    })
+<
+
+PLUGIN-UNTINT                                                 *tint-plugin-untint*
+
+A way to manually tint a window given some criteria defined yourself.
+
+For example:
+>
+    vim.api.nvim_create_autocmd("DiffUpdated", {
+      group = vim.api.nvim_create_augroup("foo", { clear = true }),
+      pattern = { "*" },
+      callback = function(_)
+        require("tint").untint(vim.api.nvim_get_current_win())
+      end
+    })
 <
 
