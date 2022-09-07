@@ -342,3 +342,35 @@ For example:
 -- After some new plugin was added that defines its own colors
 require("tint").refresh()
 ```
+
+### **plugin-tint**
+
+A way to manually tint a window given some criteria defined yourself.
+
+For example:
+
+```lua
+vim.api.nvim_create_autocmd("DiffUpdated", {
+  group = vim.api.nvim_create_augroup("foo", { clear = true }),
+  pattern = { "*" },
+  callback = function(_)
+    require("tint").tint(vim.api.nvim_get_current_win())
+  end
+})
+```
+
+### **plugin-untint**
+
+A way to manually tint a window given some criteria defined yourself.
+
+For example:
+
+```lua
+vim.api.nvim_create_autocmd("DiffUpdated", {
+  group = vim.api.nvim_create_augroup("foo", { clear = true }),
+  pattern = { "*" },
+  callback = function(_)
+    require("tint").untint(vim.api.nvim_get_current_win())
+  end
+})
+```

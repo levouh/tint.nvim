@@ -359,7 +359,7 @@ __.on_focus = function(_)
     return
   end
 
-  vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
+  tint.untint(winid)
 end
 
 --- Triggered by:
@@ -379,7 +379,7 @@ __.on_unfocus = function(_)
     return
   end
 
-  vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+  tint.tint(winid)
 end
 
 --- Triggered by:
@@ -493,6 +493,28 @@ tint.refresh = function()
   end
 
   setup_namespaces()
+end
+
+--- Tint the specified window
+---
+---@param winid number A valid window handle
+tint.tint = function(winid)
+  if not __.user_config or not vim.api.nvim_win_is_valid(winid) then
+    return
+  end
+
+  vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+end
+
+--- Untint the specified window
+---
+---@param winid number A valid window handle
+tint.untint = function(winid)
+  if not __.user_config or not vim.api.nvim_win_is_valid(winid) then
+    return
+  end
+
+  vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
 end
 
 return tint
