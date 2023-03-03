@@ -171,7 +171,7 @@ local function setup_autocmds()
   vim.api.nvim_create_autocmd(focus_events, {
     group = augroup,
     pattern = { "*" },
-    callback = __.on_focus,
+    callback = __.on_focus_or_close,
   })
 
   vim.api.nvim_create_autocmd(__.user_config.focus_change_events.unfocus, {
@@ -370,6 +370,16 @@ local function is_close_event(event)
   return event.event == "WinClosed"
 end
 
+local function set_window_hl_ns(winid, hl_ns_id)
+  local existing = vim.w[winid].tint_hl_ns_id
+  if existing and existing == hl_ns_id then
+    return
+  end
+
+  vim.w[winid].tint_hl_ns_id = hl_ns_id
+  vim.api.nvim_win_set_hl_ns(winid, hl_ns_id)
+end
+
 --- Triggered by:
 ---  `:h WinEnter`
 ---  `:h FocusGained`
@@ -377,7 +387,7 @@ end
 --- Restore the default highlight namespace
 ---
 ---@param event table Arguments from the associated `:h nvim_create_autocmd` setup
-__.on_focus = function(event)
+__.on_focus_or_close = function(event)
   if not check_enabled() then
     return
   end
@@ -447,7 +457,7 @@ end
 ---
 ---@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
 __.setup_callback = function(_)
-  __.setup_all()
+  __.setup_all(false)
 end
 
 --- Enable this plugin
@@ -535,7 +545,7 @@ tint.tint = function(winid)
     return
   end
 
-  vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+  set_window_hl_ns(winid, __.tint_ns)
 end
 
 --- Untint the specified window
@@ -546,7 +556,7 @@ tint.untint = function(winid)
     return
   end
 
-  vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
+  set_window_hl_ns(winid, __.default_ns)
 end
 
 return tint
