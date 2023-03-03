@@ -162,7 +162,13 @@ local function setup_autocmds()
 
   local augroup = create_augroup()
 
-  vim.api.nvim_create_autocmd(__.user_config.focus_change_events.focus, {
+  local focus_events = __.user_config.focus_change_events.focus
+
+  if not vim.tbl_contains(focus_events, "WinClosed") then
+    table.insert(focus_events, "WinClosed")
+  end
+
+  vim.api.nvim_create_autocmd(focus_events, {
     group = augroup,
     pattern = { "*" },
     callback = __.on_focus,
@@ -347,14 +353,31 @@ local function check_enabled()
   return __.enabled
 end
 
+--- Handle triggering focus events after a window closes
+---
+--- See #38 for more context, but sometimes when a window is closed
+--- the `:h WinEnter` event will not be triggered appropriately
+local function handle_close_event()
+  vim.schedule(function()
+    tint.untint(vim.api.nvim_get_current_win())
+  end)
+end
+
+--- Check if the event is for a window closing
+---
+---@param event table Arguments from the associated `:h nvim_create_autocmd` setup
+local function is_close_event(event)
+  return event.event == "WinClosed"
+end
+
 --- Triggered by:
 ---  `:h WinEnter`
 ---  `:h FocusGained`
 ---
 --- Restore the default highlight namespace
 ---
----@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
-__.on_focus = function(_)
+---@param event table Arguments from the associated `:h nvim_create_autocmd` setup
+__.on_focus = function(event)
   if not check_enabled() then
     return
   end
@@ -364,7 +387,11 @@ __.on_focus = function(_)
     return
   end
 
-  tint.untint(winid)
+  if is_close_event(event) then
+    handle_close_event()
+  else
+    tint.untint(winid)
+  end
 end
 
 --- Triggered by:
