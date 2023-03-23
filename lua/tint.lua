@@ -125,6 +125,12 @@ local function set_tint_ns(hl_group_name, hl_def)
   vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)
 end
 
+--- Backwards compatibile (for now) method of getting highlights as
+--- nvim__get_hl_defs is removed in #22693
+local function get_global_highlights()
+  return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(0) or vim.api.nvim_get_hl(0, {})
+end
+
 --- Setup color namespaces such that they can be set per-window
 local function setup_namespaces()
   if not __.default_ns and not __.tint_ns then
@@ -132,8 +138,8 @@ local function setup_namespaces()
     __.tint_ns = vim.api.nvim_create_namespace("_tint_dim")
   end
 
-  for hl_group_name, _ in pairs(vim.api.nvim__get_hl_defs(0)) do
-    -- Seems we cannot always ask for `rgb` values from `nvim__get_hl_defs`
+  for hl_group_name, _ in pairs(get_global_highlights()) do
+    -- Seems we cannot always ask for `rgb` values from `get_global_highlights`
     local hl_def = vim.api.nvim_get_hl_by_name(hl_group_name, true)
 
     -- Ensure we only have valid keys copied over
