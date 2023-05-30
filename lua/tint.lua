@@ -138,10 +138,7 @@ local function setup_namespaces()
     __.tint_ns = vim.api.nvim_create_namespace("_tint_dim")
   end
 
-  for hl_group_name, _ in pairs(get_global_highlights()) do
-    -- Seems we cannot always ask for `rgb` values from `get_global_highlights`
-    local hl_def = vim.api.nvim_get_hl_by_name(hl_group_name, true)
-
+  for hl_group_name, hl_def in pairs(get_global_highlights()) do
     -- Ensure we only have valid keys copied over
     hl_def = ensure_valid_hl_keys(hl_def)
     set_default_ns(hl_group_name, hl_def)
