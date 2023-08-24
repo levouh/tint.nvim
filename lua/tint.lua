@@ -414,6 +414,16 @@ __.setup_all = function(skip_config)
 
   setup_namespaces()
   setup_autocmds()
+
+  vim.schedule(function()
+    iterate_all_windows(function(winid, _)
+      if vim.api.nvim_get_current_win() ~= winid then
+        vim.api.nvim_win_call(winid, function()
+          __.on_unfocus()
+        end)
+      end
+    end)
+  end)
 end
 
 --- Setup user configuration, highlight namespaces, and autocommands
