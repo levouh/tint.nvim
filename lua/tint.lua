@@ -13,6 +13,7 @@ __.default_config = {
   transforms = nil,
   tint_background_colors = false,
   highlight_ignore_patterns = {},
+  dynamic_window_ignore = false,
   window_ignore_function = nil,
   focus_change_events = {
     focus = { "WinEnter" },
@@ -265,6 +266,7 @@ local function setup_user_config()
       end,
       "'tint' passed invalid value for option 'highlight_ignore_patterns'",
     },
+    dynamic_window_ignore = { __.user_config.dynamic_window_ignore, "boolean" },
     window_ignore_function = { __.user_config.window_ignore_function, "function", true },
     focus_change_events = {
       __.user_config.focus_change_events,
@@ -363,7 +365,7 @@ __.on_focus = function(_)
   end
 
   local winid = vim.api.nvim_get_current_win()
-  if win_should_ignore_tint(winid) then
+  if not __.user_config.dynamic_window_ignore and win_should_ignore_tint(winid) then
     return
   end
 
@@ -384,6 +386,9 @@ __.on_unfocus = function(_)
 
   local winid = vim.api.nvim_get_current_win()
   if win_should_ignore_tint(winid) then
+    if __.user_config.dynamic_window_ignore then
+      tint.untint(winid)
+    end
     return
   end
 
