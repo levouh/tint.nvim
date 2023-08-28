@@ -415,7 +415,7 @@ local function set_window_hl_ns(winid, hl_ns_id)
     return
   end
 
-  vim.w[winid].tint_hl_ns_id = hl_ns_id
+  vim.api.nvim_win_set_var(winid, "tint_hl_ns_id", hl_ns_id)
   vim.api.nvim_win_set_hl_ns(winid, hl_ns_id)
 end
 
