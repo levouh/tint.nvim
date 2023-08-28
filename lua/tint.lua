@@ -373,10 +373,12 @@ local function restore_default_highlight_namespaces()
 end
 
 --- Set the tint highlight namespace in all unfocused windows
-local function set_tint_highlight_namespaces()
+local function tint_unfocused_windows()
   iterate_all_windows(function(winid, _)
-    if winid ~= vim.api.nvim_get_current_win() then
-      vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+    if winid ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_is_valid(winid) then
+      vim.api.nvim_win_call(winid, function()
+        __.on_unfocus()
+      end)
     end
   end)
 end
@@ -445,7 +447,7 @@ end
 ---
 --- Set the tint highlight namespace
 ---
----@param _ table arguments from the associated `:h nvim_create_autocmd` setup
+---@param _ table? arguments from the associated `:h nvim_create_autocmd` setup
 __.on_unfocus = function(_)
   if not check_enabled() then
     return
@@ -483,15 +485,10 @@ __.setup_all = function(skip_config)
   setup_namespaces()
   setup_autocmds()
 
-  vim.schedule(function()
-    iterate_all_windows(function(winid, _)
-      if vim.api.nvim_get_current_win() ~= winid then
-        vim.api.nvim_win_call(winid, function()
-          __.on_unfocus()
-        end)
-      end
-    end)
-  end)
+  -- Used to in two scenarios:
+  --   1. When the editor is opened with multiple windows/splits
+  --   2. When the plugin is explicitly enabled
+  vim.schedule(tint_unfocused_windows)
 end
 
 --- Setup user configuration, highlight namespaces, and autocommands
@@ -518,10 +515,6 @@ tint.enable = function()
   --
   -- Skip user config setup as this has already happened
   __.setup_all(true)
-
-  -- Would need to trigger too many autocommands to restore tinting,
-  -- so just do this manually
-  set_tint_highlight_namespaces()
 end
 
 --- Disable this plugin
