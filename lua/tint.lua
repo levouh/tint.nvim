@@ -1,12 +1,33 @@
 local colors = require("tint.colors")
 local transforms = require("tint.transforms")
 
+---@class TintHlGroupInfo
+---@field hl_group_name string the highlight group name, pass to `:h nvim_get_hl_by_name` for more highlight information
+
+---@alias TintTransformFunction function(r: number, g: number, b: number, TintHlGroupInfo): number, number, number
+---@alias TintWindowIgnoreFunction function(winid: number):boolean
+
+---@class TintFocusChangeEvents
+---@field focus table<string> events that trigger focus
+---@field unfocus table<string> events that trigger unfocus
+
+---@class TintUserConfiguration
+---@field tint number? amount to tint, negative dims positive brightens
+---@field saturation float? saturation to preserve, must be betwee, 0.0 and 1.0
+---@field transforms table<TintTransformFunction>|string|nil functions called in order to transform a color
+---@field tint_background_colors boolean? whether backgrounds of colors should be tinted or not
+---@field highlight_ignore_patterns table<string>? highlight group names to not tint
+---@field window_ignore_function TintWindowIgnoreFunction? granular control over whether tint touches a window _at all_
+---@field focus_change_events TintFocusChangeEvents?
+
 local tint = { transforms = { SATURATE_TINT = "saturate_tint" } }
 
 -- Private "namespace" for functions, etc. that might not be defined before they are used
-local __ = { enabled = true }
+local __ = { enabled = true, current_window = nil }
 
--- Default module configuration values
+--- Default module configuration values
+---
+---@type TintUserConfiguration
 __.default_config = {
   tint = -40,
   saturation = 0.7,
@@ -33,7 +54,7 @@ __.transforms = {
 --- Ensure the passed table has only valid keys to hand to `nvim_set_hl`
 ---
 ---@param hl_def table Value returned by `nvim_get_hl_by_name` with `rgb` colors exported
----@return table The passed highlight definition with valid `nvim_set_hl` keys only
+---@return table # highlight definition with valid `nvim_set_hl` keys only
 local function ensure_valid_hl_keys(hl_def)
   return {
     fg = hl_def.fg or hl_def.foreground,
@@ -61,11 +82,16 @@ end
 
 --- Get the set of transforms to apply to highlight groups from the colorscheme in question
 ---
----@return table A table of functions to transform the input RGB color values by
+---@return table<function> # callables to transform the input RGB color values by
 local function get_transforms()
-  if type(__.user_config.transforms) == "string" and __.transforms[__.user_config.transforms] then
-    return __.transforms[__.user_config.transforms]()
+  if type(__.user_config.transforms) == "string" then
+    if __.transforms[__.user_config.transforms] then
+      return __.transforms[__.user_config.transforms]()
+    else
+      return __.transforms[tint.transforms.SATURATE_TINT]()
+    end
   elseif __.user_config.transforms then
+    ---@diagnostic disable-next-line
     return __.user_config.transforms
   else
     return __.transforms[tint.transforms.SATURATE_TINT]()
@@ -74,16 +100,16 @@ end
 
 --- Determine if a window should be ignored or not, triggered on `WinLeave`
 ---
----@param winid number Window ID
----@return boolean Whether or not the window should be ignored for tinting
+---@param winid number window handle
+---@return boolean # whether or not the window should be ignored for tinting
 local function win_should_ignore_tint(winid)
   return __.user_config.window_ignore_function and __.user_config.window_ignore_function(winid) or false
 end
 
 --- Determine if a highlight group should be ignored or not
 ---
----@param hl_group_name string The name of the highlight group
----@return boolean `true` if the group should be ignored, `false` otherwise
+---@param hl_group_name string name of the highlight group
+---@return boolean # whether or not the group should be ignored
 local function hl_group_is_ignored(hl_group_name)
   for _, pat in ipairs(__.user_config.highlight_ignore_patterns) do
     if string.find(hl_group_name, pat) then
@@ -105,29 +131,34 @@ end
 --- Create the "tinted" highlight namespace
 ---
 ---@param hl_group_name string
----@param hl_def table The highlight definition, see `:h nvim_set_hl`
+---@param hl_def table # highlight definition, see `:h nvim_set_hl`
 local function set_tint_ns(hl_group_name, hl_def)
   local ignored = hl_group_is_ignored(hl_group_name)
   local hl_group_info = { hl_group_name = hl_group_name }
 
   if hl_def.fg and not ignored then
+    ---@diagnostic disable-next-line
     hl_def.fg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.fg), __.user_config.transforms)
   end
 
   if hl_def.sp and not ignored then
+    ---@diagnostic disable-next-line
     hl_def.sp = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.sp), __.user_config.transforms)
   end
 
   if __.user_config.tint_background_colors and hl_def.bg and not ignored then
+    ---@diagnostic disable-next-line
     hl_def.bg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
 
   vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)
 end
 
---- Backwards compatibile (for now) method of getting highlights as
---- nvim__get_hl_defs is removed in #22693
+--- Backwards compatibile (for now) method of getting highlights as nvim__get_hl_defs is removed in #22693
+---
+---@return table<string, any> # highlight definitions
 local function get_global_highlights()
+  ---@diagnostic disable-next-line: undefined-field
   return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(0) or vim.api.nvim_get_hl(0, {})
 end
 
@@ -148,7 +179,7 @@ end
 
 --- Create an `:h augroup` for autocommands used by this plugin
 ---
----@return number Identifier for created augroup
+---@return number # handle for created augroup
 local function create_augroup()
   return vim.api.nvim_create_augroup("_tint", { clear = true })
 end
@@ -164,11 +195,16 @@ local function setup_autocmds()
   end
 
   local augroup = create_augroup()
+  local focus_events = __.user_config.focus_change_events.focus
+
+  if not vim.tbl_contains(focus_events, "WinClosed") then
+    table.insert(focus_events, "WinClosed")
+  end
 
   vim.api.nvim_create_autocmd(__.user_config.focus_change_events.focus, {
     group = augroup,
     pattern = { "*" },
-    callback = __.on_focus,
+    callback = __.on_focus_or_close,
   })
 
   vim.api.nvim_create_autocmd(__.user_config.focus_change_events.unfocus, {
@@ -187,6 +223,8 @@ local function setup_autocmds()
 end
 
 --- Verify the version of Neovim running has `nvim_win_set_hl_ns`, added via !13457
+---
+---@return boolean # whether or not the running Neovim instance has the functions necessary for this function to run
 local function verify_version()
   if not vim.api.nvim_win_set_hl_ns then
     vim.notify(
@@ -202,8 +240,8 @@ end
 
 --- Swap old configuration keys to new ones, handle cases `tbl_extend` does not (nested config values)
 ---
----@param user_config table User configuration table
----@return table Modified user configuration
+---@param user_config table old style user configuration
+---@return TintUserConfiguration # modified user configuration to follow new format
 local function get_user_config(user_config)
   local new_config = vim.deepcopy(user_config)
 
@@ -300,7 +338,7 @@ end
 
 --- Ensure the passed function runs after `:h VimEnter` has run
 ---
----@param func function The function to call only after `VimEnter` is done
+---@param func function to call only after `VimEnter` is done
 local function on_or_after_vimenter(func)
   if vim.v.vim_did_enter == 1 then
     func()
@@ -314,7 +352,7 @@ end
 
 --- Iterate all windows in all tabpages and call the passed function on them
 ---
----@param func function Function to be called with each `(winid, tabpage)` as its parameters
+---@param func function(winid: number, tabpage: number) called for every valid tabpage and contained window
 local function iterate_all_windows(func)
   for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
     if vim.api.nvim_tabpage_is_valid(tabpage) then
@@ -335,29 +373,60 @@ local function restore_default_highlight_namespaces()
 end
 
 --- Set the tint highlight namespace in all unfocused windows
-local function set_tint_highlight_namespaces()
+local function tint_unfocused_windows()
   iterate_all_windows(function(winid, _)
-    if winid ~= vim.api.nvim_get_current_win() then
-      vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+    if winid ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_is_valid(winid) then
+      vim.api.nvim_win_call(winid, function()
+        __.on_unfocus()
+      end)
     end
   end)
 end
 
 --- Check if this plugin is currently enabled
 ---
----@return boolean Truth-y if enabled, false-y otherwise
+---@return boolean # whether or not the plugin is enabled
 local function check_enabled()
   return __.enabled
 end
 
---- Triggered by:
----  `:h WinEnter`
----  `:h FocusGained`
+--- Handle triggering focus events after a window closes
+---
+--- See #38 for more context, but sometimes when a window is closed
+--- the `:h WinEnter` event will not be triggered appropriately
+local function handle_close_event()
+  vim.schedule(function()
+    tint.untint(vim.api.nvim_get_current_win())
+  end)
+end
+
+--- Check if the event is for a window closing
+---
+---@param event table Arguments from the associated `:h nvim_create_autocmd` setup
+local function is_close_event(event)
+  return event and event.event == "WinClosed"
+end
+
+--- Set the highlight namespace for a window
+---
+---@param winid number window handle
+---@param hl_ns_id number namespace handle
+local function set_window_hl_ns(winid, hl_ns_id)
+  local existing = vim.w[winid].tint_hl_ns_id
+  if existing and existing == hl_ns_id then
+    return
+  end
+
+  vim.api.nvim_win_set_var(winid, "tint_hl_ns_id", hl_ns_id)
+  vim.api.nvim_win_set_hl_ns(winid, hl_ns_id)
+end
+
+--- Triggered by TintFocusChangeEvents.focus
 ---
 --- Restore the default highlight namespace
 ---
----@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
-__.on_focus = function(_)
+---@param event table arguments from the associated `:h nvim_create_autocmd` setup
+__.on_focus_or_close = function(event)
   if not check_enabled() then
     return
   end
@@ -367,16 +436,18 @@ __.on_focus = function(_)
     return
   end
 
-  tint.untint(winid)
+  if is_close_event(event) then
+    handle_close_event()
+  else
+    tint.untint(winid)
+  end
 end
 
---- Triggered by:
----  `:h WinLeave`
----  `:h FocusLost`
+--- Triggered by TintFocusChangeEvents.unfocus
 ---
 --- Set the tint highlight namespace
 ---
----@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+---@param _ table? arguments from the associated `:h nvim_create_autocmd` setup
 __.on_unfocus = function(_)
   if not check_enabled() then
     return
@@ -390,12 +461,11 @@ __.on_unfocus = function(_)
   tint.tint(winid)
 end
 
---- Triggered by:
----   `:h ColorScheme`
+--- Triggered by `:h ColorScheme`
 ---
 --- Redefine highlights in both namespaces based on colors in new colorscheme
 ---
----@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+---@param _ table arguments from the associated `:h nvim_create_autocmd` setup
 __.on_colorscheme = function(_)
   if not check_enabled() then
     return
@@ -406,7 +476,7 @@ end
 
 --- Setup everything required for this module to run
 ---
----@param skip_config boolean Skip re-doing user configuration setup, useful when re-enabling, etc.
+---@param skip_config boolean? skip re-doing user configuration setup, useful when re-enabling, etc.
 __.setup_all = function(skip_config)
   if not skip_config then
     setup_user_config()
@@ -415,15 +485,10 @@ __.setup_all = function(skip_config)
   setup_namespaces()
   setup_autocmds()
 
-  vim.schedule(function()
-    iterate_all_windows(function(winid, _)
-      if vim.api.nvim_get_current_win() ~= winid then
-        vim.api.nvim_win_call(winid, function()
-          __.on_unfocus()
-        end)
-      end
-    end)
-  end)
+  -- Used to in two scenarios:
+  --   1. When the editor is opened with multiple windows/splits
+  --   2. When the plugin is explicitly enabled
+  vim.schedule(tint_unfocused_windows)
 end
 
 --- Setup user configuration, highlight namespaces, and autocommands
@@ -431,9 +496,9 @@ end
 --- Triggered by:
 ---   `:h VimEnter`
 ---
----@param _ table Arguments from the associated `:h nvim_create_autocmd` setup
+---@param _ table arguments from the associated `:h nvim_create_autocmd` setup
 __.setup_callback = function(_)
-  __.setup_all()
+  __.setup_all(false)
 end
 
 --- Enable this plugin
@@ -450,10 +515,6 @@ tint.enable = function()
   --
   -- Skip user config setup as this has already happened
   __.setup_all(true)
-
-  -- Would need to trigger too many autocommands to restore tinting,
-  -- so just do this manually
-  set_tint_highlight_namespaces()
 end
 
 --- Disable this plugin
@@ -487,7 +548,7 @@ end
 --- Setup the plugin - can be called infinite times but will only do setup once
 ---
 ---@public
----@param user_config table User configuration values, see `:h tint-setup`
+---@param user_config TintUserConfiguration see `:h tint-setup`
 tint.setup = function(user_config)
   if not verify_version() then
     return
@@ -515,24 +576,26 @@ end
 
 --- Tint the specified window
 ---
----@param winid number A valid window handle
+---@public
+---@param winid number a valid window handle
 tint.tint = function(winid)
   if not __.user_config or not vim.api.nvim_win_is_valid(winid) then
     return
   end
 
-  vim.api.nvim_win_set_hl_ns(winid, __.tint_ns)
+  set_window_hl_ns(winid, __.tint_ns)
 end
 
 --- Untint the specified window
 ---
----@param winid number A valid window handle
+---@public
+---@param winid number a valid window handle
 tint.untint = function(winid)
   if not __.user_config or not vim.api.nvim_win_is_valid(winid) then
     return
   end
 
-  vim.api.nvim_win_set_hl_ns(winid, __.default_ns)
+  set_window_hl_ns(winid, __.default_ns)
 end
 
 return tint
