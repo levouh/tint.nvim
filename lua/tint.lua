@@ -132,7 +132,7 @@ end
 ---
 ---@param hl_group_name string
 ---@param hl_def table # highlight definition, see `:h nvim_set_hl`
-local function set_tint_ns(hl_group_name, hl_def)
+local function set_tint_ns(hl_group_name, hl_def, ns_hl_id)
   local ignored = hl_group_is_ignored(hl_group_name)
   local hl_group_info = { hl_group_name = hl_group_name }
 
@@ -151,15 +151,15 @@ local function set_tint_ns(hl_group_name, hl_def)
     hl_def.bg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
 
-  vim.api.nvim_set_hl(__.tint_ns, hl_group_name, hl_def)
+  vim.api.nvim_set_hl(ns_hl_id, hl_group_name, hl_def)
 end
 
 --- Backwards compatibile (for now) method of getting highlights as nvim__get_hl_defs is removed in #22693
 ---
 ---@return table<string, any> # highlight definitions
-local function get_global_highlights()
+local function get_global_highlights(ns_id)
   ---@diagnostic disable-next-line: undefined-field
-  return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(0) or vim.api.nvim_get_hl(0, {})
+  return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(ns_id) or vim.api.nvim_get_hl(ns_id, {})
 end
 
 --- Setup color namespaces such that they can be set per-window
@@ -169,12 +169,69 @@ local function setup_namespaces()
     __.tint_ns = vim.api.nvim_create_namespace("_tint_dim")
   end
 
-  for hl_group_name, hl_def in pairs(get_global_highlights()) do
+  for hl_group_name, hl_def in pairs(get_global_highlights(0)) do
     -- Ensure we only have valid keys copied over
     hl_def = ensure_valid_hl_keys(hl_def)
     set_default_ns(hl_group_name, hl_def)
-    set_tint_ns(hl_group_name, hl_def)
+    set_tint_ns(hl_group_name, hl_def, __.tint_ns)
   end
+end
+
+local function add_namespace(ns_id, suffix)
+  __["tint_ns_" .. suffix] = vim.api.nvim_create_namespace("_tint_dim_" .. suffix)
+
+  for hl_group_name, hl_def in pairs(get_global_highlights(ns_id)) do
+    -- Ensure we only have valid keys copied over
+    hl_def = ensure_valid_hl_keys(hl_def)
+    set_tint_ns(hl_group_name, hl_def, __["tint_ns_" .. suffix])
+  end
+end
+
+---@param winid number
+---@return number
+local function get_untint_ns_id(winid)
+  local untint_ns_id = vim.w[winid].untint_ns_id
+  if untint_ns_id == nil then
+    untint_ns_id = vim.api.nvim_get_hl_ns and vim.api.nvim_get_hl_ns({ winid = winid })
+    if untint_ns_id == nil or untint_ns_id < 0 then
+      untint_ns_id = 0
+    end
+    vim.api.nvim_win_set_var(winid, "untint_ns_id", untint_ns_id)
+  end
+  return untint_ns_id
+end
+
+---@param winid number
+---@return number
+local function get_tint_ns_id(winid)
+  local untint_ns_id = get_untint_ns_id(winid)
+
+  local tint_ns_id
+  if untint_ns_id == 0 then
+    tint_ns_id = __.tint_ns
+  else
+    local ns_suffix
+    for ns_name, ns_id in pairs(vim.api.nvim_get_namespaces()) do
+      if ns_id == untint_ns_id then
+        ns_suffix = ns_name
+        break
+      end
+    end
+    if not ns_suffix then
+      ns_suffix = untint_ns_id
+    end
+
+    if not __["tint_ns_" .. ns_suffix] then
+      add_namespace(untint_ns_id, ns_suffix)
+    end
+    tint_ns_id = __["tint_ns_" .. ns_suffix]
+  end
+
+  if type(tint_ns_id) ~= "number" then
+    tint_ns_id = 0
+  end
+
+  return tint_ns_id
 end
 
 --- Create an `:h augroup` for autocommands used by this plugin
@@ -368,7 +425,8 @@ end
 --- Restore the global highlight namespace in all windows
 local function restore_default_highlight_namespaces()
   iterate_all_windows(function(winid, _)
-    vim.api.nvim_win_set_hl_ns(winid, 0)
+    vim.api.nvim_win_set_hl_ns(winid, get_untint_ns_id(winid))
+    vim.api.nvim_win_del_var(winid, "untint_ns_id")
   end)
 end
 
@@ -583,7 +641,7 @@ tint.tint = function(winid)
     return
   end
 
-  set_window_hl_ns(winid, __.tint_ns)
+  set_window_hl_ns(winid, get_tint_ns_id(winid))
 end
 
 --- Untint the specified window
@@ -595,7 +653,8 @@ tint.untint = function(winid)
     return
   end
 
-  set_window_hl_ns(winid, __.default_ns)
+  set_window_hl_ns(winid, get_untint_ns_id(winid))
+  vim.api.nvim_win_del_var(winid, "untint_ns_id")
 end
 
 return tint
