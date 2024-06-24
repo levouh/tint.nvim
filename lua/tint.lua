@@ -156,10 +156,11 @@ end
 
 --- Backwards compatibile (for now) method of getting highlights as nvim__get_hl_defs is removed in #22693
 ---
+---@param hl_ns_id number namespace handle
 ---@return table<string, any> # highlight definitions
-local function get_highlights(ns_id)
+local function get_highlights(hl_ns_id)
   ---@diagnostic disable-next-line: undefined-field
-  return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(ns_id) or vim.api.nvim_get_hl(ns_id, {})
+  return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(hl_ns_id) or vim.api.nvim_get_hl(hl_ns_id, {})
 end
 
 --- Setup color namespaces such that they can be set per-window
@@ -177,10 +178,12 @@ local function setup_namespaces()
   end
 end
 
-local function add_namespace(ns_id, suffix)
+---@param hl_ns_id number
+---@param suffix string
+local function add_namespace(hl_ns_id, suffix)
   __["tint_ns_" .. suffix] = vim.api.nvim_create_namespace("_tint_dim_" .. suffix)
 
-  for hl_group_name, hl_def in pairs(get_highlights(ns_id)) do
+  for hl_group_name, hl_def in pairs(get_highlights(hl_ns_id)) do
     -- Ensure we only have valid keys copied over
     hl_def = ensure_valid_hl_keys(hl_def)
     set_tint_ns(hl_group_name, hl_def, __["tint_ns_" .. suffix])
@@ -211,14 +214,14 @@ local function get_tint_ns_id(winid)
     tint_ns_id = __.tint_ns
   else
     local ns_suffix
-    for ns_name, ns_id in pairs(vim.api.nvim_get_namespaces()) do
-      if ns_id == untint_ns_id then
+    for ns_name, hl_ns_id in pairs(vim.api.nvim_get_namespaces()) do
+      if hl_ns_id == untint_ns_id then
         ns_suffix = ns_name
         break
       end
     end
     if not ns_suffix then
-      ns_suffix = untint_ns_id
+      ns_suffix = tostring(untint_ns_id)
     end
 
     if not __["tint_ns_" .. ns_suffix] then
@@ -422,7 +425,7 @@ local function iterate_all_windows(func)
   end
 end
 
---- Restore the global highlight namespace in all windows
+--- Restore the previous highlight namespace in all windows
 local function restore_default_highlight_namespaces()
   iterate_all_windows(function(winid, _)
     vim.api.nvim_win_set_hl_ns(winid, get_untint_ns_id(winid))
