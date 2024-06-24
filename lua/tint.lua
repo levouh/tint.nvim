@@ -157,7 +157,7 @@ end
 --- Backwards compatibile (for now) method of getting highlights as nvim__get_hl_defs is removed in #22693
 ---
 ---@return table<string, any> # highlight definitions
-local function get_global_highlights(ns_id)
+local function get_highlights(ns_id)
   ---@diagnostic disable-next-line: undefined-field
   return vim.api.nvim__get_hl_defs and vim.api.nvim__get_hl_defs(ns_id) or vim.api.nvim_get_hl(ns_id, {})
 end
@@ -169,7 +169,7 @@ local function setup_namespaces()
     __.tint_ns = vim.api.nvim_create_namespace("_tint_dim")
   end
 
-  for hl_group_name, hl_def in pairs(get_global_highlights(0)) do
+  for hl_group_name, hl_def in pairs(get_highlights(0)) do
     -- Ensure we only have valid keys copied over
     hl_def = ensure_valid_hl_keys(hl_def)
     set_default_ns(hl_group_name, hl_def)
@@ -180,7 +180,7 @@ end
 local function add_namespace(ns_id, suffix)
   __["tint_ns_" .. suffix] = vim.api.nvim_create_namespace("_tint_dim_" .. suffix)
 
-  for hl_group_name, hl_def in pairs(get_global_highlights(ns_id)) do
+  for hl_group_name, hl_def in pairs(get_highlights(ns_id)) do
     -- Ensure we only have valid keys copied over
     hl_def = ensure_valid_hl_keys(hl_def)
     set_tint_ns(hl_group_name, hl_def, __["tint_ns_" .. suffix])
