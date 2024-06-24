@@ -221,13 +221,13 @@ local function get_tint_ns_id(winid)
       end
     end
     if not ns_suffix then
-      ns_suffix = tostring(untint_ns_id)
+      tint_ns_id = __.tint_ns
+    else
+      if not __["tint_ns_" .. ns_suffix] then
+        add_namespace(untint_ns_id, ns_suffix)
+      end
+      tint_ns_id = __["tint_ns_" .. ns_suffix]
     end
-
-    if not __["tint_ns_" .. ns_suffix] then
-      add_namespace(untint_ns_id, ns_suffix)
-    end
-    tint_ns_id = __["tint_ns_" .. ns_suffix]
   end
 
   if type(tint_ns_id) ~= "number" then
