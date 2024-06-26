@@ -6,6 +6,7 @@ local transforms = require("tint.transforms")
 
 ---@alias TintTransformFunction function(r: number, g: number, b: number, TintHlGroupInfo): number, number, number
 ---@alias TintWindowIgnoreFunction function(winid: number):boolean
+---@alias TintShouldCreateExtraTint function(winid: number, hl_ns_id: number, hl_ns_name: string):boolean
 
 ---@class TintFocusChangeEvents
 ---@field focus table<string> events that trigger focus
@@ -18,6 +19,7 @@ local transforms = require("tint.transforms")
 ---@field tint_background_colors boolean? whether backgrounds of colors should be tinted or not
 ---@field highlight_ignore_patterns table<string>? highlight group names to not tint
 ---@field window_ignore_function TintWindowIgnoreFunction? granular control over whether tint touches a window _at all_
+---@field should_create_extra_tint TintShouldCreateExtraTint? granular control over whether non global namespaces should be tinted
 ---@field focus_change_events TintFocusChangeEvents?
 
 local tint = { transforms = { SATURATE_TINT = "saturate_tint" } }
@@ -39,6 +41,9 @@ __.default_config = {
     focus = { "WinEnter" },
     unfocus = { "WinLeave" },
   },
+  should_create_extra_tint = function()
+    return false
+  end,
 }
 
 -- Pre-defined transforms that can be used by the user
@@ -132,7 +137,8 @@ end
 ---
 ---@param hl_group_name string
 ---@param hl_def table # highlight definition, see `:h nvim_set_hl`
-local function set_tint_ns(hl_group_name, hl_def, ns_hl_id)
+---@param hl_ns_id number
+local function set_tint_ns(hl_group_name, hl_def, hl_ns_id)
   local ignored = hl_group_is_ignored(hl_group_name)
   local hl_group_info = { hl_group_name = hl_group_name }
 
@@ -151,7 +157,7 @@ local function set_tint_ns(hl_group_name, hl_def, ns_hl_id)
     hl_def.bg = transforms.transform_color(hl_group_info, colors.get_hex(hl_def.bg), __.user_config.transforms)
   end
 
-  vim.api.nvim_set_hl(ns_hl_id, hl_group_name, hl_def)
+  vim.api.nvim_set_hl(hl_ns_id, hl_group_name, hl_def)
 end
 
 --- Backwards compatibile (for now) method of getting highlights as nvim__get_hl_defs is removed in #22693
@@ -181,12 +187,19 @@ end
 ---@param hl_ns_id number
 ---@param suffix string
 local function add_namespace(hl_ns_id, suffix)
-  __["tint_ns_" .. suffix] = vim.api.nvim_create_namespace("_tint_dim_" .. suffix)
+  local ns_name = "tint_ns_" .. tostring(suffix)
+  local ns_id = vim.api.nvim_create_namespace("_tint_dim_" .. tostring(suffix))
+  __[ns_name] = ns_id
 
+  -- first copy over global tint namespace
+  for hl_group_name, hl_def in pairs(get_highlights(__.tint_ns)) do
+    vim.api.nvim_set_hl(ns_id, hl_group_name, hl_def)
+  end
+  -- create tinted highlights for extra namespace
   for hl_group_name, hl_def in pairs(get_highlights(hl_ns_id)) do
     -- Ensure we only have valid keys copied over
     hl_def = ensure_valid_hl_keys(hl_def)
-    set_tint_ns(hl_group_name, hl_def, __["tint_ns_" .. suffix])
+    set_tint_ns(hl_group_name, hl_def, ns_id)
   end
 end
 
@@ -213,20 +226,21 @@ local function get_tint_ns_id(winid)
   if untint_ns_id == 0 then
     tint_ns_id = __.tint_ns
   else
-    local ns_suffix
+    local ns_suffix = nil
     for ns_name, hl_ns_id in pairs(vim.api.nvim_get_namespaces()) do
       if hl_ns_id == untint_ns_id then
         ns_suffix = ns_name
         break
       end
     end
-    if not ns_suffix then
-      tint_ns_id = __.tint_ns
-    else
-      if not __["tint_ns_" .. ns_suffix] then
-        add_namespace(untint_ns_id, ns_suffix)
+    if __.user_config.should_create_extra_tint(winid, untint_ns_id, ns_suffix) then
+      local new_ns_name = "tint_ns_" .. (ns_suffix or tostring(untint_ns_id))
+      if not __[new_ns_name] then
+        add_namespace(untint_ns_id, (ns_suffix or tostring(untint_ns_id)))
       end
-      tint_ns_id = __["tint_ns_" .. ns_suffix]
+      tint_ns_id = __[new_ns_name]
+    else
+      tint_ns_id = __.tint_ns
     end
   end
 
@@ -364,6 +378,7 @@ local function setup_user_config()
       "'tint' passed invalid value for option 'highlight_ignore_patterns'",
     },
     window_ignore_function = { __.user_config.window_ignore_function, "function", true },
+    should_create_extra_tint = { __.user_config.should_create_extra_tint, "function", true },
     focus_change_events = {
       __.user_config.focus_change_events,
       function(val)
