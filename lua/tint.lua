@@ -224,7 +224,7 @@ local function get_tint_ns_id(winid)
   end
   local tint_ns_id = __[tint_ns_name]
 
-  return tonumber(tint_ns_id) or 0
+  return tonumber(tint_ns_id) or __.tint_ns_0
 end
 
 --- Create an `:h augroup` for autocommands used by this plugin
