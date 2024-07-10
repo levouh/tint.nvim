@@ -6,7 +6,7 @@ local transforms = require("tint.transforms")
 
 ---@alias TintTransformFunction function(r: number, g: number, b: number, TintHlGroupInfo): number, number, number
 ---@alias TintWindowIgnoreFunction function(winid: number):boolean
----@alias TintShouldCreateExtraTint function(hl_ns_id: number):boolean
+---@alias TintShouldCreateExtraTint function(winid: number):boolean
 
 ---@class TintFocusChangeEvents
 ---@field focus table<string> events that trigger focus
@@ -19,7 +19,7 @@ local transforms = require("tint.transforms")
 ---@field tint_background_colors boolean? whether backgrounds of colors should be tinted or not
 ---@field highlight_ignore_patterns table<string>? highlight group names to not tint
 ---@field window_ignore_function TintWindowIgnoreFunction? granular control over whether tint touches a window _at all_
----@field should_create_extra_tint TintShouldCreateExtraTint? granular control over whether non global namespaces should be tinted
+---@field should_create_extra_tint TintShouldCreateExtraTint? granular control over whether non global namespaces should be tinted with an extra tint
 ---@field focus_change_events TintFocusChangeEvents?
 
 local tint = { transforms = { SATURATE_TINT = "saturate_tint" } }
@@ -221,7 +221,7 @@ local function get_tint_ns_id(winid)
   local original_ns_id = get_original_ns_id(winid)
   local tint_ns_name = "tint_ns_" .. tostring(original_ns_id)
 
-  if not __[tint_ns_name] and __.user_config.should_create_extra_tint(original_ns_id) then
+  if not __[tint_ns_name] and __.user_config.should_create_extra_tint(winid) then
     __[tint_ns_name] = add_namespace(original_ns_id)
   end
   local tint_ns_id = __[tint_ns_name]

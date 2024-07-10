@@ -28,6 +28,13 @@ require("tint").setup({
 
     -- Do not tint `terminal` or floating windows, tint everything else
     return buftype == "terminal" or floating
+  end,
+  should_create_extra_tint = function(winid)
+    local bufid = vim.api.nvim_win_get_buf(winid)
+    local filetype = vim.api.nvim_buf_get_option(bufid, "filetype")
+
+    -- Create a new hl_ns if filetype is "markdown" or "help", otherwise use default tint_ns
+    return filetype == "markdown" or filetype == "help"
   end
 })
 ```
@@ -130,6 +137,26 @@ A list of patterns (supplied to `string.find`) for highlight group names to igno
 *default*: `nil`
 
 A function that will be called for each window to discern whether or not it should be tinted. Arguments are `(winid)`, return `false` or `nil` to tint a window, anything else to not tint it.
+
+### **option-should_create_extra_tint *
+*type*: `function`
+*default*: `nil`
+
+A function that will be called for each window having a highlight namespace id other then 0. Arguments are `(winid)`, return `true` if new tint highlights corresponing to the window's ns_id should be created. Will only be called if no extra highlights were created already. Usefull, e.g., if different colorchemes per filetype are used.
+
+For example:
+
+```lua
+require("tint").setup({
+  should_create_extra_tint = function(winid)
+    local bufid = vim.api.nvim_win_get_buf(winid)
+    local filetype = vim.api.nvim_buf_get_option(bufid, "filetype")
+
+    -- Create a new hl_ns if filetype is "markdown" or "help", otherwise use default tint_ns
+    return filetype == "markdown" or filetype == "help"
+  end
+})
+```
 
 ### **option-tint_background_colors**
 *type*: `boolean`
