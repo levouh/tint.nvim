@@ -41,9 +41,7 @@ __.default_config = {
     focus = { "WinEnter" },
     unfocus = { "WinLeave" },
   },
-  should_create_extra_tint = function()
-    return false
-  end,
+  should_create_extra_tint = nil,
 }
 
 -- Pre-defined transforms that can be used by the user
@@ -221,7 +219,7 @@ local function get_tint_ns_id(winid)
   local original_ns_id = get_original_ns_id(winid)
   local tint_ns_name = "tint_ns_" .. tostring(original_ns_id)
 
-  if not __[tint_ns_name] and __.user_config.should_create_extra_tint(winid) then
+  if not __[tint_ns_name] and __.user_config.should_create_extra_tint and __.user_config.should_create_extra_tint(winid) then
     __[tint_ns_name] = add_namespace(original_ns_id)
   end
   local tint_ns_id = __[tint_ns_name]
