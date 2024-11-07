@@ -1,8 +1,12 @@
+# ❗Repository is archived, contact me if you would like to take over
+
+I am not interested in supporting this repository anymore, but am more than willing to transfer ownership to someone else if they are interested. Contact me if that is the case.
+
 # :eyeglasses: tint.nvim
 
 Tint inactive windows in Neovim using window-local highlight namespaces.
 
-## :warning: Caveats
+## ❔Caveats
 
 - This feature was added via [!13457](https://github.com/neovim/neovim/pull/13457) in [v.0.8.0](https://github.com/neovim/neovim/releases/tag/v0.8.0) (released 2022-09-30). Your version of Neovim must include this change in order for this to work.
 - If you are noticing that certain colors are not being tinted, it is because likely they are defined _after_ `tint` has been loaded and are "standalone" (i.e. not `link`).
